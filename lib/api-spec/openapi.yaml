@@ -3,20 +3,39 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SDN/AAC Internal Management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: users
+  - name: seasons
+  - name: categoryRules
+  - name: athletes
+  - name: crews
+  - name: fleet
+  - name: equipment
+  - name: trainingSchedules
+  - name: trainingSessions
+  - name: attendance
+  - name: competitions
+  - name: races
+  - name: results
+  - name: financialMovements
+  - name: quotaPlans
+  - name: quotas
+  - name: payments
+  - name: documents
+  - name: dashboard
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +43,1726 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ─────────────────────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  # ── Users ─────────────────────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Seasons ───────────────────────────────────────────────────────────────────
+  /seasons:
+    get:
+      operationId: listSeasons
+      tags: [seasons]
+      responses:
+        "200":
+          description: Seasons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Season"
+    post:
+      operationId: createSeason
+      tags: [seasons]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeasonInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Season"
+
+  /seasons/{id}:
+    get:
+      operationId: getSeason
+      tags: [seasons]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Season
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Season"
+    patch:
+      operationId: updateSeason
+      tags: [seasons]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeasonUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Season"
+    delete:
+      operationId: deleteSeason
+      tags: [seasons]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Category Rules ─────────────────────────────────────────────────────────────
+  /category-rules:
+    get:
+      operationId: listCategoryRules
+      tags: [categoryRules]
+      responses:
+        "200":
+          description: Category rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryRule"
+    post:
+      operationId: createCategoryRule
+      tags: [categoryRules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryRuleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryRule"
+
+  /category-rules/{id}:
+    patch:
+      operationId: updateCategoryRule
+      tags: [categoryRules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryRuleInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryRule"
+    delete:
+      operationId: deleteCategoryRule
+      tags: [categoryRules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Athletes ─────────────────────────────────────────────────────────────────
+  /athletes:
+    get:
+      operationId: listAthletes
+      tags: [athletes]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Athletes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Athlete"
+    post:
+      operationId: createAthlete
+      tags: [athletes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Athlete"
+
+  /athletes/{id}:
+    get:
+      operationId: getAthlete
+      tags: [athletes]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Athlete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AthleteDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateAthlete
+      tags: [athletes]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AthleteUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Athlete"
+    delete:
+      operationId: deleteAthlete
+      tags: [athletes]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /athletes/{id}/category-override:
+    patch:
+      operationId: overrideAthleteCategory
+      tags: [athletes]
+      summary: Manually override athlete's category for a season
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryOverrideInput"
+      responses:
+        "200":
+          description: Override applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Athlete"
+
+  # ── Crews ─────────────────────────────────────────────────────────────────────
+  /crews:
+    get:
+      operationId: listCrews
+      tags: [crews]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Crews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Crew"
+    post:
+      operationId: createCrew
+      tags: [crews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrewInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crew"
+
+  /crews/{id}:
+    get:
+      operationId: getCrew
+      tags: [crews]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Crew
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crew"
+    patch:
+      operationId: updateCrew
+      tags: [crews]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrewUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Crew"
+    delete:
+      operationId: deleteCrew
+      tags: [crews]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Fleet ─────────────────────────────────────────────────────────────────────
+  /fleet:
+    get:
+      operationId: listFleet
+      tags: [fleet]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Fleet items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FleetItem"
+    post:
+      operationId: createFleetItem
+      tags: [fleet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FleetItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetItem"
+
+  /fleet/{id}:
+    get:
+      operationId: getFleetItem
+      tags: [fleet]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fleet item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetItem"
+    patch:
+      operationId: updateFleetItem
+      tags: [fleet]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FleetItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetItem"
+    delete:
+      operationId: deleteFleetItem
+      tags: [fleet]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /fleet/{id}/valuations:
+    post:
+      operationId: addFleetValuation
+      tags: [fleet]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FleetValuationInput"
+      responses:
+        "201":
+          description: Valuation added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FleetValuation"
+
+  # ── Equipment ─────────────────────────────────────────────────────────────────
+  /equipment:
+    get:
+      operationId: listEquipment
+      tags: [equipment]
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Equipment list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Equipment"
+    post:
+      operationId: createEquipment
+      tags: [equipment]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Equipment"
+
+  /equipment/{id}:
+    get:
+      operationId: getEquipment
+      tags: [equipment]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Equipment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Equipment"
+    patch:
+      operationId: updateEquipment
+      tags: [equipment]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EquipmentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Equipment"
+    delete:
+      operationId: deleteEquipment
+      tags: [equipment]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Training Schedules ────────────────────────────────────────────────────────
+  /training-schedules:
+    get:
+      operationId: listTrainingSchedules
+      tags: [trainingSchedules]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Training schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrainingSchedule"
+    post:
+      operationId: createTrainingSchedule
+      tags: [trainingSchedules]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingScheduleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingSchedule"
+
+  /training-schedules/{id}:
+    patch:
+      operationId: updateTrainingSchedule
+      tags: [trainingSchedules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingScheduleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingSchedule"
+    delete:
+      operationId: deleteTrainingSchedule
+      tags: [trainingSchedules]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Training Sessions ─────────────────────────────────────────────────────────
+  /training-sessions:
+    get:
+      operationId: listTrainingSessions
+      tags: [trainingSessions]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+        - name: groupCategory
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: trainerId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Training sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TrainingSession"
+    post:
+      operationId: createTrainingSession
+      tags: [trainingSessions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingSessionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingSession"
+
+  /training-sessions/today:
+    get:
+      operationId: getTodaySessions
+      tags: [trainingSessions]
+      summary: Get today's sessions for the current trainer
+      responses:
+        "200":
+          description: Today's sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TodaySession"
+
+  /training-sessions/{id}:
+    get:
+      operationId: getTrainingSession
+      tags: [trainingSessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Training session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingSession"
+    patch:
+      operationId: updateTrainingSession
+      tags: [trainingSessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrainingSessionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingSession"
+    delete:
+      operationId: deleteTrainingSession
+      tags: [trainingSessions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Attendance ────────────────────────────────────────────────────────────────
+  /training-sessions/{id}/attendance:
+    get:
+      operationId: getSessionAttendance
+      tags: [attendance]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+    put:
+      operationId: saveSessionAttendance
+      tags: [attendance]
+      summary: Save all attendance records for a session
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceSaveInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+
+  /athletes/{id}/attendance-summary:
+    get:
+      operationId: getAthleteAttendanceSummary
+      tags: [attendance]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceSummary"
+
+  # ── Competitions ──────────────────────────────────────────────────────────────
+  /competitions:
+    get:
+      operationId: listCompetitions
+      tags: [competitions]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Competitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Competition"
+    post:
+      operationId: createCompetition
+      tags: [competitions]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Competition"
+
+  /competitions/{id}:
+    get:
+      operationId: getCompetition
+      tags: [competitions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Competition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Competition"
+    patch:
+      operationId: updateCompetition
+      tags: [competitions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Competition"
+    delete:
+      operationId: deleteCompetition
+      tags: [competitions]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Races (Provas) ────────────────────────────────────────────────────────────
+  /races:
+    get:
+      operationId: listRaces
+      tags: [races]
+      parameters:
+        - name: competitionId
+          in: query
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Races
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Race"
+    post:
+      operationId: createRace
+      tags: [races]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RaceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+
+  /races/{id}:
+    get:
+      operationId: getRace
+      tags: [races]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Race
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+    patch:
+      operationId: updateRace
+      tags: [races]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RaceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+    delete:
+      operationId: deleteRace
+      tags: [races]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Results ───────────────────────────────────────────────────────────────────
+  /results:
+    get:
+      operationId: listResults
+      tags: [results]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+        - name: athleteId
+          in: query
+          schema:
+            type: integer
+        - name: crewId
+          in: query
+          schema:
+            type: integer
+        - name: competitionId
+          in: query
+          schema:
+            type: integer
+        - name: raceId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Result"
+    post:
+      operationId: createResult
+      tags: [results]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+
+  /results/{id}:
+    get:
+      operationId: getResult
+      tags: [results]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+    patch:
+      operationId: updateResult
+      tags: [results]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+    delete:
+      operationId: deleteResult
+      tags: [results]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /results/season-summary:
+    get:
+      operationId: getSeasonResultsSummary
+      tags: [results]
+      parameters:
+        - name: seasonId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Season results summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeasonResultsSummary"
+
+  # ── Financial Movements ───────────────────────────────────────────────────────
+  /financial-movements:
+    get:
+      operationId: listFinancialMovements
+      tags: [financialMovements]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Financial movements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FinancialMovement"
+    post:
+      operationId: createFinancialMovement
+      tags: [financialMovements]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialMovementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialMovement"
+
+  /financial-movements/{id}:
+    get:
+      operationId: getFinancialMovement
+      tags: [financialMovements]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Financial movement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialMovement"
+    patch:
+      operationId: updateFinancialMovement
+      tags: [financialMovements]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialMovementUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialMovement"
+    delete:
+      operationId: deleteFinancialMovement
+      tags: [financialMovements]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /financial-summary:
+    get:
+      operationId: getFinancialSummary
+      tags: [financialMovements]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialSummary"
+
+  # ── Quota Plans ───────────────────────────────────────────────────────────────
+  /quota-plans:
+    get:
+      operationId: listQuotaPlans
+      tags: [quotaPlans]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quota plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuotaPlan"
+    post:
+      operationId: createQuotaPlan
+      tags: [quotaPlans]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotaPlanInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaPlan"
+
+  /quota-plans/{id}:
+    patch:
+      operationId: updateQuotaPlan
+      tags: [quotaPlans]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotaPlanUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaPlan"
+    delete:
+      operationId: deleteQuotaPlan
+      tags: [quotaPlans]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Quotas ────────────────────────────────────────────────────────────────────
+  /quotas:
+    get:
+      operationId: listQuotas
+      tags: [quotas]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+        - name: athleteId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Quotas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quota"
+
+  /quotas/generate:
+    post:
+      operationId: generateQuotas
+      tags: [quotas]
+      summary: Generate quotas for all athletes based on the quota plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateQuotasInput"
+      responses:
+        "200":
+          description: Generated quotas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quota"
+
+  /quotas/{id}:
+    get:
+      operationId: getQuota
+      tags: [quotas]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quota
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quota"
+
+  # ── Payments ──────────────────────────────────────────────────────────────────
+  /payments:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      parameters:
+        - name: quotaId
+          in: query
+          schema:
+            type: integer
+        - name: athleteId
+          in: query
+          schema:
+            type: integer
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+    post:
+      operationId: createPayment
+      tags: [payments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/{id}:
+    delete:
+      operationId: deletePayment
+      tags: [payments]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /quotas-overdue:
+    get:
+      operationId: listOverdueQuotas
+      tags: [quotas]
+      summary: List athletes with overdue or pending quotas
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Overdue quota summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AthleteQuotaSummary"
+
+  # ── Documents ─────────────────────────────────────────────────────────────────
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: createDocument
+      tags: [documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    patch:
+      operationId: updateDocument
+      tags: [documents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Dashboard ─────────────────────────────────────────────────────────────────
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      parameters:
+        - name: seasonId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1773,1361 @@ components:
       required:
         - status
 
+    # ── Auth ────────────────────────────────────────────────────────────────────
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [id, name, email, role, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, trainer]
+        active:
+          type: boolean
+        assignedCategories:
+          type: array
+          items:
+            type: string
+
+    # ── Users ───────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      required: [id, name, email, role, active, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, trainer]
+        active:
+          type: boolean
+        assignedCategories:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UserInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [admin, trainer]
+        assignedCategories:
+          type: array
+          items:
+            type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, trainer]
+        active:
+          type: boolean
+        assignedCategories:
+          type: array
+          items:
+            type: string
+
+    # ── Seasons ─────────────────────────────────────────────────────────────────
+    Season:
+      type: object
+      required: [id, name, startDate, endDate, active]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+
+    SeasonInput:
+      type: object
+      required: [name, startDate, endDate]
+      properties:
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+
+    SeasonUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        active:
+          type: boolean
+
+    # ── Category Rules ──────────────────────────────────────────────────────────
+    CategoryRule:
+      type: object
+      required: [id, name, minAge, maxAge]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: ["integer", "null"]
+        description:
+          type: ["string", "null"]
+
+    CategoryRuleInput:
+      type: object
+      required: [name, minAge]
+      properties:
+        name:
+          type: string
+        minAge:
+          type: integer
+        maxAge:
+          type: ["integer", "null"]
+        description:
+          type: ["string", "null"]
+
+    # ── Athletes ────────────────────────────────────────────────────────────────
+    Athlete:
+      type: object
+      required: [id, name, birthDate, gender, status, memberNumber, affiliationDate]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        memberNumber:
+          type: ["string", "null"]
+        fprNumber:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        affiliationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ativo, inativo, suspenso]
+        notes:
+          type: ["string", "null"]
+        categoryOverride:
+          type: ["string", "null"]
+
+    AthleteDetail:
+      type: object
+      required: [id, name, birthDate, gender, status, memberNumber, affiliationDate]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        memberNumber:
+          type: ["string", "null"]
+        fprNumber:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        affiliationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ativo, inativo, suspenso]
+        notes:
+          type: ["string", "null"]
+        categoryOverride:
+          type: ["string", "null"]
+        crewHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrewHistoryItem"
+        resultHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/Result"
+        quotaSummary:
+          $ref: "#/components/schemas/AthleteQuotaSummary"
+
+    AthleteInput:
+      type: object
+      required: [name, birthDate, gender, status, affiliationDate]
+      properties:
+        name:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        memberNumber:
+          type: ["string", "null"]
+        fprNumber:
+          type: ["string", "null"]
+        affiliationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ativo, inativo, suspenso]
+        notes:
+          type: ["string", "null"]
+
+    AthleteUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [M, F]
+        email:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        memberNumber:
+          type: ["string", "null"]
+        fprNumber:
+          type: ["string", "null"]
+        affiliationDate:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [ativo, inativo, suspenso]
+        notes:
+          type: ["string", "null"]
+
+    CategoryOverrideInput:
+      type: object
+      required: [seasonId]
+      properties:
+        seasonId:
+          type: integer
+        categoryOverride:
+          type: ["string", "null"]
+
+    CrewHistoryItem:
+      type: object
+      required: [crewId, crewName, seasonId, seasonName, boatClass]
+      properties:
+        crewId:
+          type: integer
+        crewName:
+          type: string
+        seasonId:
+          type: integer
+        seasonName:
+          type: string
+        boatClass:
+          type: string
+
+    # ── Crews ───────────────────────────────────────────────────────────────────
+    Crew:
+      type: object
+      required: [id, name, boatClass, category, seasonId]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        boatClass:
+          type: string
+          enum: ["1x", "2x", "2-", "4x", "4-", "4+", "8+"]
+        category:
+          type: string
+        seasonId:
+          type: integer
+        seasonName:
+          type: string
+        athleteIds:
+          type: array
+          items:
+            type: integer
+        athletes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Athlete"
+
+    CrewInput:
+      type: object
+      required: [name, boatClass, category, seasonId]
+      properties:
+        name:
+          type: string
+        boatClass:
+          type: string
+          enum: ["1x", "2x", "2-", "4x", "4-", "4+", "8+"]
+        category:
+          type: string
+        seasonId:
+          type: integer
+        athleteIds:
+          type: array
+          items:
+            type: integer
+
+    CrewUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        boatClass:
+          type: string
+          enum: ["1x", "2x", "2-", "4x", "4-", "4+", "8+"]
+        category:
+          type: string
+        seasonId:
+          type: integer
+        athleteIds:
+          type: array
+          items:
+            type: integer
+
+    # ── Fleet ───────────────────────────────────────────────────────────────────
+    FleetItem:
+      type: object
+      required: [id, identifier, type, status]
+      properties:
+        id:
+          type: integer
+        identifier:
+          type: string
+        brand:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        type:
+          type: string
+          enum: [barco_remo, barco_motor, bicicleta, atrelado, carrinha]
+        subtype:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ativo, manutencao, avariado, fora_servico]
+        breakdownDescription:
+          type: ["string", "null"]
+        repairMaterials:
+          type: ["string", "null"]
+        currentValue:
+          type: ["number", "null"]
+        currentValueDate:
+          type: ["string", "null"]
+        valuations:
+          type: array
+          items:
+            $ref: "#/components/schemas/FleetValuation"
+
+    FleetItemInput:
+      type: object
+      required: [identifier, type, status]
+      properties:
+        identifier:
+          type: string
+        brand:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        type:
+          type: string
+          enum: [barco_remo, barco_motor, bicicleta, atrelado, carrinha]
+        subtype:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ativo, manutencao, avariado, fora_servico]
+        breakdownDescription:
+          type: ["string", "null"]
+        repairMaterials:
+          type: ["string", "null"]
+
+    FleetItemUpdate:
+      type: object
+      properties:
+        identifier:
+          type: string
+        brand:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        type:
+          type: string
+          enum: [barco_remo, barco_motor, bicicleta, atrelado, carrinha]
+        subtype:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ativo, manutencao, avariado, fora_servico]
+        breakdownDescription:
+          type: ["string", "null"]
+        repairMaterials:
+          type: ["string", "null"]
+
+    FleetValuation:
+      type: object
+      required: [id, fleetItemId, value, date]
+      properties:
+        id:
+          type: integer
+        fleetItemId:
+          type: integer
+        value:
+          type: number
+        date:
+          type: string
+          format: date
+        notes:
+          type: ["string", "null"]
+
+    FleetValuationInput:
+      type: object
+      required: [value, date]
+      properties:
+        value:
+          type: number
+        date:
+          type: string
+          format: date
+        notes:
+          type: ["string", "null"]
+
+    # ── Equipment ───────────────────────────────────────────────────────────────
+    Equipment:
+      type: object
+      required: [id, name, category, totalQuantity, availableQuantity, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        totalQuantity:
+          type: integer
+        availableQuantity:
+          type: integer
+        status:
+          type: string
+        assignedTo:
+          type: ["string", "null"]
+        acquisitionDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    EquipmentInput:
+      type: object
+      required: [name, category, totalQuantity, availableQuantity, status]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        totalQuantity:
+          type: integer
+        availableQuantity:
+          type: integer
+        status:
+          type: string
+        assignedTo:
+          type: ["string", "null"]
+        acquisitionDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    EquipmentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        totalQuantity:
+          type: integer
+        availableQuantity:
+          type: integer
+        status:
+          type: string
+        assignedTo:
+          type: ["string", "null"]
+        acquisitionDate:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+
+    # ── Training Schedules ──────────────────────────────────────────────────────
+    TrainingSchedule:
+      type: object
+      required: [id, seasonId, groupCategory, daysOfWeek, startTime, endTime, trainingType]
+      properties:
+        id:
+          type: integer
+        seasonId:
+          type: integer
+        groupCategory:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, outro]
+        trainerIds:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: ["string", "null"]
+
+    TrainingScheduleInput:
+      type: object
+      required: [seasonId, groupCategory, daysOfWeek, startTime, endTime, trainingType]
+      properties:
+        seasonId:
+          type: integer
+        groupCategory:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, outro]
+        trainerIds:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: ["string", "null"]
+
+    TrainingScheduleUpdate:
+      type: object
+      properties:
+        daysOfWeek:
+          type: array
+          items:
+            type: integer
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, outro]
+        trainerIds:
+          type: array
+          items:
+            type: integer
+        notes:
+          type: ["string", "null"]
+
+    # ── Training Sessions ───────────────────────────────────────────────────────
+    TrainingSession:
+      type: object
+      required: [id, date, groupCategory, trainingType, startTime, endTime]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        groupCategory:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, prova, estagio, outro]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainerId:
+          type: ["integer", "null"]
+        trainerName:
+          type: ["string", "null"]
+        seasonId:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        attendanceCount:
+          type: ["integer", "null"]
+
+    TodaySession:
+      type: object
+      required: [id, date, groupCategory, trainingType, startTime, endTime, athletes]
+      properties:
+        id:
+          type: integer
+        date:
+          type: string
+          format: date
+        groupCategory:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, prova, estagio, outro]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainerId:
+          type: ["integer", "null"]
+        seasonId:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+        athletes:
+          type: array
+          items:
+            $ref: "#/components/schemas/Athlete"
+        existingAttendance:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceRecord"
+
+    TrainingSessionInput:
+      type: object
+      required: [date, groupCategory, trainingType, startTime, endTime]
+      properties:
+        date:
+          type: string
+          format: date
+        groupCategory:
+          type: string
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, prova, estagio, outro]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        trainerId:
+          type: ["integer", "null"]
+        seasonId:
+          type: ["integer", "null"]
+        notes:
+          type: ["string", "null"]
+
+    TrainingSessionUpdate:
+      type: object
+      properties:
+        trainingType:
+          type: string
+          enum: [agua, ginasio, ergometro, prova, estagio, outro]
+        startTime:
+          type: string
+        endTime:
+          type: string
+        notes:
+          type: ["string", "null"]
+
+    # ── Attendance ──────────────────────────────────────────────────────────────
+    AttendanceRecord:
+      type: object
+      required: [id, sessionId, athleteId, status]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        athleteId:
+          type: integer
+        athleteName:
+          type: string
+        status:
+          type: string
+          enum: [presente, ausente, ausente_justificado]
+        observation:
+          type: ["string", "null"]
+
+    AttendanceSaveInput:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          items:
+            type: object
+            required: [athleteId, status]
+            properties:
+              athleteId:
+                type: integer
+              status:
+                type: string
+                enum: [presente, ausente, ausente_justificado]
+              observation:
+                type: ["string", "null"]
+
+    AttendanceSummary:
+      type: object
+      required: [athleteId, athleteName, totalSessions, present, absent, absentJustified, attendanceRate]
+      properties:
+        athleteId:
+          type: integer
+        athleteName:
+          type: string
+        totalSessions:
+          type: integer
+        present:
+          type: integer
+        absent:
+          type: integer
+        absentJustified:
+          type: integer
+        attendanceRate:
+          type: number
+        byType:
+          type: object
+          additionalProperties:
+            type: integer
+
+    # ── Competitions ────────────────────────────────────────────────────────────
+    Competition:
+      type: object
+      required: [id, name, startDate, seasonId]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: ["string", "null"]
+        seasonId:
+          type: integer
+        seasonName:
+          type: ["string", "null"]
+        organizer:
+          type: ["string", "null"]
+
+    CompetitionInput:
+      type: object
+      required: [name, startDate, seasonId]
+      properties:
+        name:
+          type: string
+        location:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: ["string", "null"]
+        seasonId:
+          type: integer
+        organizer:
+          type: ["string", "null"]
+
+    CompetitionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: ["string", "null"]
+        organizer:
+          type: ["string", "null"]
+
+    # ── Races (Provas) ──────────────────────────────────────────────────────────
+    Race:
+      type: object
+      required: [id, name, competitionId]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        competitionId:
+          type: integer
+        competitionName:
+          type: ["string", "null"]
+        modality:
+          type: ["string", "null"]
+        distance:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+
+    RaceInput:
+      type: object
+      required: [name, competitionId]
+      properties:
+        name:
+          type: string
+        competitionId:
+          type: integer
+        modality:
+          type: ["string", "null"]
+        distance:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+
+    RaceUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        modality:
+          type: ["string", "null"]
+        distance:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+
+    # ── Results ─────────────────────────────────────────────────────────────────
+    Result:
+      type: object
+      required: [id, raceId]
+      properties:
+        id:
+          type: integer
+        raceId:
+          type: integer
+        raceName:
+          type: ["string", "null"]
+        competitionName:
+          type: ["string", "null"]
+        competitionDate:
+          type: ["string", "null"]
+        athleteId:
+          type: ["integer", "null"]
+        athleteName:
+          type: ["string", "null"]
+        crewId:
+          type: ["integer", "null"]
+        crewName:
+          type: ["string", "null"]
+        position:
+          type: ["integer", "null"]
+        time:
+          type: ["string", "null"]
+        points:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+
+    ResultInput:
+      type: object
+      required: [raceId]
+      properties:
+        raceId:
+          type: integer
+        athleteId:
+          type: ["integer", "null"]
+        crewId:
+          type: ["integer", "null"]
+        position:
+          type: ["integer", "null"]
+        time:
+          type: ["string", "null"]
+        points:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+
+    ResultUpdate:
+      type: object
+      properties:
+        position:
+          type: ["integer", "null"]
+        time:
+          type: ["string", "null"]
+        points:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+
+    SeasonResultsSummary:
+      type: object
+      required: [seasonId, seasonName, totalCompetitions, totalRaces, totalResults, podiums, victories]
+      properties:
+        seasonId:
+          type: integer
+        seasonName:
+          type: string
+        totalCompetitions:
+          type: integer
+        totalRaces:
+          type: integer
+        totalResults:
+          type: integer
+        podiums:
+          type: integer
+        victories:
+          type: integer
+        topResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/Result"
+
+    # ── Financial Movements ──────────────────────────────────────────────────────
+    FinancialMovement:
+      type: object
+      required: [id, type, category, amount, date, description]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [receita, despesa]
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        documentUrl:
+          type: ["string", "null"]
+        seasonId:
+          type: ["integer", "null"]
+        seasonName:
+          type: ["string", "null"]
+        relatedQuotaId:
+          type: ["integer", "null"]
+
+    FinancialMovementInput:
+      type: object
+      required: [type, category, amount, date, description]
+      properties:
+        type:
+          type: string
+          enum: [receita, despesa]
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        documentUrl:
+          type: ["string", "null"]
+        seasonId:
+          type: ["integer", "null"]
+
+    FinancialMovementUpdate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [receita, despesa]
+        category:
+          type: string
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        description:
+          type: string
+        documentUrl:
+          type: ["string", "null"]
+        seasonId:
+          type: ["integer", "null"]
+
+    FinancialSummary:
+      type: object
+      required: [totalRevenue, totalExpenses, balance]
+      properties:
+        totalRevenue:
+          type: number
+        totalExpenses:
+          type: number
+        balance:
+          type: number
+        byCategory:
+          type: array
+          items:
+            type: object
+            required: [category, type, total]
+            properties:
+              category:
+                type: string
+              type:
+                type: string
+              total:
+                type: number
+
+    # ── Quota Plans ─────────────────────────────────────────────────────────────
+    QuotaPlan:
+      type: object
+      required: [id, seasonId, category, amount, periodicity]
+      properties:
+        id:
+          type: integer
+        seasonId:
+          type: integer
+        seasonName:
+          type: ["string", "null"]
+        category:
+          type: string
+        amount:
+          type: number
+        periodicity:
+          type: string
+          enum: [anual, mensal, trimestral]
+        dueDay:
+          type: ["integer", "null"]
+
+    QuotaPlanInput:
+      type: object
+      required: [seasonId, category, amount, periodicity]
+      properties:
+        seasonId:
+          type: integer
+        category:
+          type: string
+        amount:
+          type: number
+        periodicity:
+          type: string
+          enum: [anual, mensal, trimestral]
+        dueDay:
+          type: ["integer", "null"]
+
+    QuotaPlanUpdate:
+      type: object
+      properties:
+        amount:
+          type: number
+        periodicity:
+          type: string
+          enum: [anual, mensal, trimestral]
+        dueDay:
+          type: ["integer", "null"]
+
+    # ── Quotas ──────────────────────────────────────────────────────────────────
+    Quota:
+      type: object
+      required: [id, athleteId, seasonId, amountDue, amountPaid, status]
+      properties:
+        id:
+          type: integer
+        athleteId:
+          type: integer
+        athleteName:
+          type: ["string", "null"]
+        seasonId:
+          type: integer
+        seasonName:
+          type: ["string", "null"]
+        period:
+          type: ["string", "null"]
+        amountDue:
+          type: number
+        amountPaid:
+          type: number
+        amountOwed:
+          type: number
+        status:
+          type: string
+          enum: [pago, parcial, pendente, em_atraso]
+        dueDate:
+          type: ["string", "null"]
+        payments:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payment"
+
+    GenerateQuotasInput:
+      type: object
+      required: [seasonId, quotaPlanId]
+      properties:
+        seasonId:
+          type: integer
+        quotaPlanId:
+          type: integer
+
+    AthleteQuotaSummary:
+      type: object
+      required: [athleteId, athleteName, totalDue, totalPaid, totalOwed]
+      properties:
+        athleteId:
+          type: integer
+        athleteName:
+          type: string
+        totalDue:
+          type: number
+        totalPaid:
+          type: number
+        totalOwed:
+          type: number
+        overdueCount:
+          type: integer
+        quotas:
+          type: array
+          items:
+            $ref: "#/components/schemas/Quota"
+
+    # ── Payments ────────────────────────────────────────────────────────────────
+    Payment:
+      type: object
+      required: [id, quotaId, amount, date]
+      properties:
+        id:
+          type: integer
+        quotaId:
+          type: integer
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        method:
+          type: ["string", "null"]
+          enum: ["numerario", "transferencia", "mbway", "outro", null]
+        notes:
+          type: ["string", "null"]
+
+    PaymentInput:
+      type: object
+      required: [quotaId, amount, date]
+      properties:
+        quotaId:
+          type: integer
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        method:
+          type: ["string", "null"]
+          enum: ["numerario", "transferencia", "mbway", "outro", null]
+        notes:
+          type: ["string", "null"]
+
+    # ── Documents ───────────────────────────────────────────────────────────────
+    Document:
+      type: object
+      required: [id, title, type, date]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        type:
+          type: string
+          enum: [noticia, contrato, arquivo]
+        date:
+          type: string
+          format: date
+        content:
+          type: ["string", "null"]
+        fileUrl:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        entity:
+          type: ["string", "null"]
+        contractStart:
+          type: ["string", "null"]
+        contractEnd:
+          type: ["string", "null"]
+        contractStatus:
+          type: ["string", "null"]
+          enum: [ativo, expirado, null]
+        notes:
+          type: ["string", "null"]
+
+    DocumentInput:
+      type: object
+      required: [title, type, date]
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [noticia, contrato, arquivo]
+        date:
+          type: string
+          format: date
+        content:
+          type: ["string", "null"]
+        fileUrl:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        entity:
+          type: ["string", "null"]
+        contractStart:
+          type: ["string", "null"]
+        contractEnd:
+          type: ["string", "null"]
+        contractStatus:
+          type: ["string", "null"]
+          enum: [ativo, expirado, null]
+        notes:
+          type: ["string", "null"]
+
+    DocumentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          type: string
+          enum: [noticia, contrato, arquivo]
+        date:
+          type: string
+          format: date
+        content:
+          type: ["string", "null"]
+        fileUrl:
+          type: ["string", "null"]
+        category:
+          type: ["string", "null"]
+        entity:
+          type: ["string", "null"]
+        contractStart:
+          type: ["string", "null"]
+        contractEnd:
+          type: ["string", "null"]
+        contractStatus:
+          type: ["string", "null"]
+          enum: [ativo, expirado, null]
+        notes:
+          type: ["string", "null"]
+
+    # ── Dashboard ────────────────────────────────────────────────────────────────
+    DashboardStats:
+      type: object
+      required: [activeAthletes, upcomingSessions, monthlyBalance, seasonId]
+      properties:
+        seasonId:
+          type: ["integer", "null"]
+        seasonName:
+          type: ["string", "null"]
+        activeAthletes:
+          type: integer
+        totalCrews:
+          type: integer
+        upcomingSessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainingSession"
+        recentResults:
+          type: array
+          items:
+            $ref: "#/components/schemas/Result"
+        monthlyBalance:
+          type: number
+        monthlyRevenue:
+          type: number
+        monthlyExpenses:
+          type: number
+        overdueQuotasCount:
+          type: integer
+        overdueQuotasAmount:
+          type: number
+        totalPodiums:
+          type: integer
+        totalVictories:
+          type: integer
+        fleetAvailableCount:
+          type: integer
+        fleetInMaintenanceCount:
+          type: integer

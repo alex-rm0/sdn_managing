@@ -1,0 +1,3 @@
+- [Orval codegen quirks](orval-codegen-quirks.md) — format:email → zod.email() error; path+query params create type name collisions
+- [bcrypt pnpm approval](bcrypt-pnpm.md) — bcrypt needs onlyBuiltDependencies in root package.json to build native addon
+- [Drizzle serial vs integer](drizzle-nullable-columns.md) — use integer() not serial() for nullable numeric columns in Drizzle schema

@@ -1,0 +1,211 @@
+Contexto
+
+Cria uma aplicação web de gestão interna para a Secção de Desportos Náuticos (SDN) da Associação Académica de Coimbra (AAC). É uma ferramenta de uso interno para a direção da secção, acessível a partir de qualquer sítio via browser de computador, com uma base de dados relacional própria (PostgreSQL) — não precisa de ser pública nem de branding elaborado, mas precisa de ser fiável, rápida de usar e fácil de consultar.
+
+Nesta fase, a aplicação é só para desktop/computador — não é necessário otimizar para mobile/telemóvel. Foca o design de interface em ecrãs de computador (layouts mais densos, tabelas largas, sidebar fixa), sem gastar esforço em responsividade mobile. Isto pode ser revisitado numa fase futura.
+
+O objetivo principal é acabar com a dispersão de dados em Excel, email e WhatsApp, e permitir tirar relatórios (ex: resultados de uma época desportiva) em segundos em vez de horas.
+
+Idioma da interface: Português (Portugal), em todos os textos, labels, mensagens e datas (formato dd/mm/aaaa).
+
+Utilizadores e perfis: dois perfis nesta fase, e cada perfil suporta múltiplos utilizadores (não é um único login fixo) — vários elementos da direção podem ter conta de Administrador, e vários treinadores podem ter conta de Treinador em simultâneo.
+
+
+Administrador (elementos da direção da secção): acesso total de leitura e escrita a todos os módulos. Deve existir um ecrã de gestão de utilizadores onde um Administrador pode criar, editar e desativar contas (tanto de outros Administradores como de Treinadores), e atribuir a cada Treinador os escalões/grupos que lhe competem.
+Treinador: acesso apenas ao módulo de Presenças e Treinos (ver detalhe do fluxo rápido nesse módulo), limitado ao(s) escalão(ões)/grupo(s) a que está associado — nunca vê a lista completa de atletas da secção, nem os módulos Financeiro, Documentos ou fichas de atleta fora do seu grupo.
+
+
+Login simples por email/palavra-passe. Estrutura a tabela de utilizadores com um campo de "role"/perfil, para no futuro se poderem adicionar mais perfis (ex: atleta) com permissões mais restritas sem ter de remodelar a base de dados.
+
+Stack técnica sugerida
+
+
+Frontend: React + Tailwind CSS, interface tipo painel de administração (sidebar de navegação por módulo, tabelas com pesquisa/filtros/ordenação, formulários de criação/edição em modais ou páginas dedicadas).
+Backend: Node.js/Express (ou equivalente que o Replit Agent considerar mais robusto).
+Base de dados: PostgreSQL (usar a base de dados do Replit ou Neon), com um esquema relacional bem normalizado — as tabelas devem ser desenhadas para permitir queries diretas (ex: via SQL ou endpoints de relatório) sem duplicação de dados.
+Autenticação: email + palavra-passe, sessão persistente.
+Todas as listagens principais devem suportar exportação para CSV/Excel.
+Todos os módulos com dados tabulares devem suportar importação a partir de ficheiro CSV (com um mapeamento simples de colunas), porque os dados existentes vão ser convertidos manualmente para esse formato.
+
+
+Módulos e modelo de dados
+
+1. Atletas e Tripulações
+
+Atleta
+
+
+Nome completo, data de nascimento, género, contacto (email + telefone), número de sócio/atleta, número de FPR (Federação Portuguesa de Remo), escalão/categoria (ex: sub-23, sénior, master), data de filiação, estado (ativo/inativo/suspenso), notas.
+
+
+Importante — escalão por época: o escalão de um atleta é normalmente determinado pela idade (segundo as regras de escalões da FPR) e muda de época para época. Não deve ser um campo estático que a direção tem de atualizar manualmente atleta a atleta todos os anos. O sistema deve:
+
+
+Guardar a data de nascimento do atleta (fonte da verdade).
+Ter uma tabela/configuração de "regras de escalão" (ex: intervalo de idades ou ano de nascimento correspondente a cada escalão, com a idade de referência calculada a 31 de dezembro do ano da época, à semelhança das regras da FPR).
+Calcular automaticamente o escalão de cada atleta em cada época a partir da data de nascimento e dessas regras, em vez de ser inserido manualmente. Permitir à direção corrigir manualmente um caso excecional, mas o valor por defeito deve ser sempre calculado.
+
+
+Tripulação
+
+
+Designação/nome, tipo de barco associado — usa as classes de remo: skiff (1x), duplo/dois sem/dois de ponta (2x / 2-), quadruplo/quatro sem/quatro com (4x / 4- / 4+), oito (8+). (Nota: "x" = "scull", cada atleta com dois remos; "-" = "sem timoneiro", cada atleta com um remo; "+" = "com timoneiro".) Categoria/escalão, época a que pertence, lista de atletas que a compõem (relação muitos-para-muitos, com histórico — uma tripulação pode mudar de composição entre épocas).
+
+
+Ecrã de detalhe do atleta deve mostrar o histórico completo: tripulações em que participou, resultados obtidos, presenças em treinos.
+
+2. Frota (Embarcações e Veículos) e Equipamento
+
+Frota — tabela única para todos os bens maiores da secção, não só barcos de remo. Cobre: barcos de remo (1x, 2x/2-, 4x/4-/4+, 8+), barcos a motor, bicicletas, atrelados e carrinhas.
+
+
+ID do barco/ativo, marca, ano, tipo (usar uma lista com: barco de remo — com subtipo/classe —, barco a motor, bicicleta, atrelado, carrinha), estado (ativo, em manutenção, avariado, fora de serviço), avaria (descrição do problema atual, se existir), materiais necessários para reparação (texto livre ou lista), valor atual e data de referência desse valor (ex: "4500€, valor a out/2025" — o valor pode ser atualizado ao longo do tempo, por isso guarda também um histórico de avaliações com data, não só o último valor).
+
+
+Equipamento/Material (bens consumíveis/menores, distintos da frota)
+
+
+Designação (ex: remos, coletes, fatos, ergómetro), categoria, quantidade total, quantidade disponível, estado, atribuição (a que tripulação/atleta está atribuído, se aplicável), data de aquisição.
+
+
+Relatórios: inventário completo da frota e do material, filtrável por tipo e por estado; lista de ativos avariados com os materiais de reparação pendentes, para acompanhamento de manutenção.
+
+3. Presenças e Treinos
+
+Este é o módulo de uso diário do perfil Treinador e a prioridade de design aqui é velocidade: um treinador tem de conseguir marcar o treino de hoje e as presenças em poucos segundos, sem preencher datas, horas nem procurar atletas fora do seu grupo. O fluxo por defeito deve exigir o mínimo de toques possível.
+
+Horário/Plano de treinos (configurado pela direção uma vez por época, ou sempre que muda)
+
+
+Para cada escalão/grupo/tripulação: dias da semana, hora de início/fim, tipo de treino habitual (água, ginásio, ergómetro, outro), treinador(es) responsável(eis).
+Isto define os treinos "esperados" em cada dia da semana — não precisam de ser criados manualmente todos os dias, o sistema já sabe que treino é suposto haver hoje e para quem.
+
+
+Atribuição de treinadores a grupos
+
+
+Cada utilizador com perfil Treinador está associado a um ou mais escalões/grupos/tripulações específicos. Só vê e regista treinos e presenças desses grupos — nunca a lista completa de atletas da secção.
+
+
+Fluxo diário do treinador (ecrã principal ao entrar na app)
+
+
+Mostra logo o(s) treino(s) previstos para hoje, para os grupos desse treinador, com data, hora e tipo já pré-preenchidos a partir do Horário — nada disto é escrito manualmente.
+Um toque para ajustar o tipo de treino, só se algo mudou nesse dia (ex: passou de água para ginásio por mau tempo).
+Lista de presenças mostra só os atletas do escalão/grupo desse treino, já marcados como presentes por defeito — o treinador apenas toca para desmarcar quem faltou (fluxo por excepção, mais rápido do que marcar um a um quem esteve presente).
+Um único botão para guardar tudo.
+Criar um treino fora do horário previsto (ex: sessão extra) deve ser possível, mas é o caminho secundário, não o principal.
+
+
+Treino (gerado automaticamente a partir do Horário para o dia corrente; pode ser criado manualmente em casos excecionais)
+
+
+Data, hora de início/fim, treinador responsável, escalão/grupo/tripulação, tipo de treino (água, ginásio, ergómetro, prova/competição, estágio, outro), notas.
+
+
+Presença
+
+
+Ligação treino ↔ atleta, com estado (presente, ausente, ausente justificado) e observação opcional.
+
+
+Relatórios:
+
+
+Histórico de presenças por atleta e por período, com taxa de assiduidade calculada automaticamente.
+Resumo de época: número total de treinos realizados, discriminado por tipo (ex: quantos foram de água, quantos de ginásio, quantos estágios, quantas provas), para análise de carga de trabalho ao longo da época.
+
+
+Nota: provas/competições e estágios já têm os seus próprios módulos mais detalhados (Resultados Desportivos, e Financeiro para custos de estágios), mas devem também poder aparecer como entradas no calendário de treinos, para efeitos de contagem e planeamento.
+
+4. Resultados Desportivos (módulo prioritário)
+
+Época desportiva
+
+
+Nome/designação (ex: "2025/2026"), data de início e fim.
+
+
+Competição
+
+
+Nome, local, data(s), época a que pertence, entidade organizadora.
+
+
+Prova
+
+
+Competição associada, modalidade/distância, categoria/escalão.
+
+
+Resultado
+
+
+Prova associada, atleta ou tripulação associada, posição/classificação obtida, tempo, pontos (se aplicável), notas.
+
+
+Relatórios essenciais (devem existir como ecrãs de consulta com filtros, não só tabelas cruas):
+
+
+Todos os resultados de uma época, filtráveis por atleta, por tripulação, por prova ou por competição.
+Ranking de um atleta ao longo de várias épocas (evolução).
+Resumo de época: número de competições, número de pódios/vitórias, melhores resultados.
+
+
+5. Financeiro
+
+Movimento financeiro
+
+
+Tipo (receita/despesa), categoria (quotas, equipamento, salários, material, manutenção, viagens/estágios, inscrições em competições, outro), valor, data, descrição, documento/fatura associado (upload de ficheiro PDF/imagem), época a que se refere.
+
+
+Quotas de atletas — módulo importante, tem de responder de imediato a "quanto é que este atleta deve" e "que atletas têm quotas em atraso", sem cálculo manual.
+
+
+Plano de quotas (configurado pela direção por época): valor da quota, podendo variar por escalão/categoria (ex: sub-23 paga diferente de sénior) e por periodicidade (pagamento único anual, ou mensal/trimestral — a definir na configuração da época).
+Quota do atleta: gerada automaticamente para cada atleta com base no Plano de quotas da época e no seu escalão — a direção não deve ter de introduzir manualmente o valor devido atleta a atleta (mesma lógica do cálculo automático de escalão). Cada quota tem: atleta, época, período a que respeita (se for mensal/trimestral), valor devido.
+Pagamento: um atleta pode pagar em várias tranches. Cada pagamento regista: quota associada, valor pago, data, método (opcional: numerário, transferência, MB Way, etc.). Ao registar um pagamento, deve gerar automaticamente o movimento financeiro correspondente (receita, categoria "quotas"), sem entrada duplicada.
+Saldo e estado: calculados automaticamente a partir da soma dos pagamentos face ao valor devido — nunca escolhidos manualmente. Estados: pago, parcial (com valor em falta visível), pendente, em atraso (se ultrapassar a data limite definida).
+
+
+Ecrã de detalhe do atleta deve mostrar o histórico de quotas e pagamentos, e quanto deve neste momento.
+
+Relatórios essenciais:
+
+
+Lista de atletas com quotas em atraso ou por pagar, com o valor em dívida de cada um.
+Total de quotas por cobrar vs. já recebidas, por época.
+Resumo financeiro geral por período e por categoria (total de receitas, total de despesas, saldo), com possibilidade de comparar épocas.
+
+
+6. Documentos e Comunicação (pode ser uma versão simples nesta primeira fase, para expandir depois)
+
+
+Notícias/Notas de imprensa: título, data, conteúdo (texto), ficheiro anexo opcional.
+Contratos e Protocolos: nome, entidade/contraparte, data de início e fim, ficheiro anexo, notas, estado (ativo/expirado).
+Arquivo de documentos gerais: repositório simples de ficheiros (emails exportados, PDFs, etc.) com título, categoria e data, para consulta futura — não precisa de ser uma integração de email a sério nesta fase.
+
+
+Prioridades de construção
+
+Constrói por esta ordem, para garantir que os módulos mais importantes ficam prontos primeiro:
+
+
+Estrutura base: autenticação, layout do painel, navegação entre módulos.
+Atletas e Tripulações.
+Resultados Desportivos (com os relatórios/filtros descritos acima) — este é o módulo mais crítico.
+Financeiro (movimentos, quotas, resumo).
+Embarcações e Equipamento.
+Presenças e Treinos.
+Documentos e Comunicação.
+
+
+Requisitos transversais
+
+
+Todas as tabelas principais (atletas, resultados, movimentos financeiros, equipamento) devem ter pesquisa por texto, filtros por campo relevante (ex: época, categoria, estado) e ordenação por coluna.
+Dashboard inicial (página principal após login) com indicadores-chave: número de atletas ativos, próximos treinos, últimos resultados, saldo financeiro do mês/época atual.
+Design limpo e funcional, sem necessidade de elementos gráficos elaborados — prioriza clareza e velocidade de utilização sobre estética.
+Não é necessário tornar a aplicação responsiva para telemóvel/tablet nesta fase — assume-se utilização em computador.
+As permissões por perfil (Administrador vs. Treinador) devem ser aplicadas de forma consistente tanto na interface (esconder/desativar o que não é permitido) como no backend (bloquear os pedidos, não só escondê-los visualmente).
