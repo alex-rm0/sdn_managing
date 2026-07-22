@@ -11,7 +11,7 @@ if (!process.env.SESSION_SECRET) {
 export const sessionMiddleware = session({
   store: new PgSession({
     pool,
-    tableName: "sessions",
+    tableName: "session",
   }),
   secret: process.env.SESSION_SECRET,
   resave: false,
