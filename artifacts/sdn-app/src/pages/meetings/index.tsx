@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListMeetings, useCreateMeeting, useUpdateMeeting, useDeleteMeeting,
@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Trash2, GripVertical, FileText, Users, ChevronRight, Pencil, X, ClipboardList, Clock } from 'lucide-react';
+import { Plus, Trash2, GripVertical, FileText, Users, ChevronRight, Pencil, X, ClipboardList, Clock, Upload, Loader2 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -343,6 +343,8 @@ export default function MeetingsList() {
   const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<MeetingMinutes | null>(null);
   const [editor, setEditor] = useState<EditorState>(emptyEditor());
+  const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListMeetingsQueryKey() });
 
@@ -350,6 +352,45 @@ export default function MeetingsList() {
     setEditTarget(null);
     setEditor(emptyEditor());
     setEditOpen(true);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!fileInputRef.current) return;
+    fileInputRef.current.value = '';
+    if (!file) return;
+
+    setIsParsing(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/meetings/parse-file', { method: 'POST', body: form });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
+        throw new Error(err.error ?? 'Erro ao processar ficheiro');
+      }
+      const data = await res.json();
+
+      // Map API response to editor state
+      const today = new Date();
+      const fallbackDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      setEditTarget(null);
+      setEditor({
+        date: data.date ?? fallbackDate,
+        attendees: data.attendees ?? '',
+        agendaItems: Array.isArray(data.agendaItems) && data.agendaItems.length > 0
+          ? data.agendaItems
+          : [{ text: '', pending: false }],
+        sections: Array.isArray(data.sections) ? data.sections : [],
+        notes: data.notes ?? '',
+      });
+      setEditOpen(true);
+      toast({ title: 'Ficheiro lido com sucesso', description: 'Revê os dados e guarda.' });
+    } catch (err) {
+      toast({ title: 'Erro ao ler ficheiro', description: err instanceof Error ? err.message : 'Tenta novamente.', variant: 'destructive' });
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const openEdit = (m: MeetingMinutes) => {
@@ -401,9 +442,24 @@ export default function MeetingsList() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">Reuniões de Direção</h1>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="w-4 h-4 mr-2" /> Nova ata
-          </Button>
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.txt"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+            <Button variant="outline" size="sm" disabled={isParsing} onClick={() => fileInputRef.current?.click()}>
+              {isParsing
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> A ler ficheiro…</>
+                : <><Upload className="w-4 h-4 mr-2" /> Importar PDF / Word</>
+              }
+            </Button>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="w-4 h-4 mr-2" /> Nova ata
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

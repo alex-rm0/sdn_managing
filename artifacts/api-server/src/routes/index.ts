@@ -13,6 +13,7 @@ import financialRouter from "./financial";
 import documentsRouter from "./documents";
 import dashboardRouter from "./dashboard";
 import meetingsRouter from "./meetings";
+import meetingsParseRouter from "./meetings-parse";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(financialRouter);
 router.use(documentsRouter);
 router.use(dashboardRouter);
 router.use(meetingsRouter);
+router.use(meetingsParseRouter);
 
 export default router;
