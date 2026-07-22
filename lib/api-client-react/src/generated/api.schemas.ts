@@ -1403,3 +1403,48 @@ export interface MeetingMinutesUpdate {
   sections?: MeetingSection[];
   notes?: string | null;
 }
+
+// ── Team Members ──────────────────────────────────────────────────────────────
+
+export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];
+export const TeamMemberRole = {
+  direcao: 'direcao',
+  treinador: 'treinador',
+  funcionario: 'funcionario',
+} as const;
+
+export interface TeamMember {
+  id: number;
+  name: string;
+  role: TeamMemberRole;
+  position?: string | null;
+  portfolio?: string | null;
+  notes?: string | null;
+  active: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface TeamMemberInput {
+  name: string;
+  role: TeamMemberRole;
+  position?: string | null;
+  portfolio?: string | null;
+  notes?: string | null;
+  active?: boolean;
+  sortOrder?: number;
+}
+
+export interface TeamMemberUpdate {
+  name?: string;
+  role?: TeamMemberRole;
+  position?: string | null;
+  portfolio?: string | null;
+  notes?: string | null;
+  active?: boolean;
+  sortOrder?: number;
+}
+
+export type ListTeamMembersParams = {
+  role?: string;
+};

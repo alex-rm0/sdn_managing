@@ -18,6 +18,7 @@ import {
   FileText,
   LogOut,
   BookOpen,
+  UserSquare2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -72,6 +73,7 @@ const adminGroups: NavGroup[] = [
   {
     label: 'Administração',
     items: [
+      { href: '/equipa',       label: 'Equipa',       icon: UserSquare2 },
       { href: '/reunioes',     label: 'Reuniões',     icon: BookOpen },
       { href: '/documentos',   label: 'Documentos',   icon: FileText },
       { href: '/utilizadores', label: 'Utilizadores', icon: ShieldAlert },

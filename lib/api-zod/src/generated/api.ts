@@ -1973,3 +1973,44 @@ export const DeleteMeetingParams = zod.object({
 })
 
 export const DeleteMeetingResponse = zod.void()
+
+
+// ── Team Members ──────────────────────────────────────────────────────────────
+
+export const TeamMemberRoleSchema = zod.enum(['direcao', 'treinador', 'funcionario'])
+
+export const ListTeamMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "role": TeamMemberRoleSchema,
+  "position": zod.string().nullish(),
+  "portfolio": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "active": zod.boolean(),
+  "sortOrder": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
+
+export const CreateTeamMemberBody = zod.object({
+  "name": zod.string(),
+  "role": TeamMemberRoleSchema,
+  "position": zod.string().nullish(),
+  "portfolio": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "active": zod.boolean().optional(),
+  "sortOrder": zod.number().optional()
+})
+
+export const UpdateTeamMemberParams = zod.object({ "id": zod.coerce.number() })
+export const DeleteTeamMemberParams = zod.object({ "id": zod.coerce.number() })
+
+export const UpdateTeamMemberBody = zod.object({
+  "name": zod.string().optional(),
+  "role": TeamMemberRoleSchema.optional(),
+  "position": zod.string().nullish(),
+  "portfolio": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "active": zod.boolean().optional(),
+  "sortOrder": zod.number().optional()
+})

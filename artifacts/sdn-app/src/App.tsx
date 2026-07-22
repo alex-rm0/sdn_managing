@@ -25,6 +25,7 @@ import SchedulesList from '@/pages/schedules/index';
 import UsersList from '@/pages/users/index';
 import DocumentsList from '@/pages/documents/index';
 import MeetingsList from '@/pages/meetings/index';
+import EquipaPage from '@/pages/equipa/index';
 import { useEffect } from 'react';
 
 const queryClient = new QueryClient();
@@ -104,6 +105,9 @@ function Router() {
       </Route>
       <Route path="/documentos">
         {() => <ProtectedRoute component={DocumentsList} adminOnly />}
+      </Route>
+      <Route path="/equipa">
+        {() => <ProtectedRoute component={EquipaPage} adminOnly />}
       </Route>
       <Route path="/reunioes">
         {() => <ProtectedRoute component={MeetingsList} adminOnly />}
