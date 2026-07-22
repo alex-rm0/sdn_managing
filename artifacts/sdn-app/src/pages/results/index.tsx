@@ -20,7 +20,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trophy, Medal, Upload, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Trophy, Medal, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+
+// ── JSON format hint ──────────────────────────────────────────────────────────
+function JsonFormatHint({ example }: { example: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-xs">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        Ver formato JSON
+      </button>
+      {open && <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">{example}</pre>}
+    </div>
+  );
+}
 
 // ── CRUD form schema ──────────────────────────────────────────────────────────
 const schema = z.object({
@@ -366,15 +380,25 @@ export default function ResultsList() {
 
       {/* ── Create / Edit dialog ── */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? 'Editar Resultado' : 'Novo Resultado'}</DialogTitle></DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="raceId" render={({ field }) => (
                 <FormItem><FormLabel>Prova *</FormLabel>
                   <Select onValueChange={v => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ''} disabled={!!editing}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Selecionar prova" /></SelectTrigger></FormControl>
-                    <SelectContent>{races?.map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name}{r.competitionName ? ` — ${r.competitionName}` : ''}</SelectItem>)}</SelectContent>
+                    <FormControl>
+                      <SelectTrigger className="[&>span]:truncate [&>span]:block">
+                        <SelectValue placeholder="Selecionar prova" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {races?.map(r => (
+                        <SelectItem key={r.id} value={String(r.id)}>
+                          {r.name}{r.competitionName ? ` — ${r.competitionName}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select><FormMessage />
                 </FormItem>
               )} />
@@ -439,9 +463,10 @@ export default function ResultsList() {
                     <span>{importParseError}</span>
                   </div>
                 )}
+                <JsonFormatHint example={IMPORT_EXAMPLE} />
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p><strong>atletas</strong>: string ou array de strings — <code className="bg-muted px-1 rounded">"João Silva"</code> ou <code className="bg-muted px-1 rounded">["João", "Pedro"]</code></p>
-                  <p><strong>classe</strong>: classe do barco (ex: <code className="bg-muted px-1 rounded">2x</code>, <code className="bg-muted px-1 rounded">4+</code>)</p>
+                  <p><strong>atletas</strong>: string ou array — <code className="bg-muted px-1 rounded">"João Silva"</code> ou <code className="bg-muted px-1 rounded">["João", "Pedro"]</code></p>
+                  <p><strong>classe</strong>: classe do barco (ex: <code className="bg-muted px-1 rounded">1x</code>, <code className="bg-muted px-1 rounded">2x</code>, <code className="bg-muted px-1 rounded">4+</code>, <code className="bg-muted px-1 rounded">8+</code>)</p>
                   <p><strong>raceId</strong>: ID da prova (ver em Competições), ou use <strong>prova</strong> para correspondência por nome</p>
                 </div>
               </div>

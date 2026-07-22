@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sailboat, Wrench } from 'lucide-react';
+import { Sailboat, Wrench, Truck } from 'lucide-react';
 import FleetList from '@/pages/fleet/index';
 import EquipmentList from '@/pages/equipment/index';
 
@@ -14,7 +14,10 @@ export default function InventarioPage() {
       <Tabs defaultValue="embarcacoes">
         <TabsList className="mb-2">
           <TabsTrigger value="embarcacoes" className="flex items-center gap-2">
-            <Sailboat className="w-4 h-4" /> Embarcações & Viaturas
+            <Sailboat className="w-4 h-4" /> Embarcações
+          </TabsTrigger>
+          <TabsTrigger value="viaturas" className="flex items-center gap-2">
+            <Truck className="w-4 h-4" /> Viaturas
           </TabsTrigger>
           <TabsTrigger value="equipamento" className="flex items-center gap-2">
             <Wrench className="w-4 h-4" /> Equipamento
@@ -22,24 +25,17 @@ export default function InventarioPage() {
         </TabsList>
 
         <TabsContent value="embarcacoes">
-          {/* Strip the inner page title — rendered inline here */}
-          <FleetInline />
+          <FleetList category="embarcacoes" />
+        </TabsContent>
+
+        <TabsContent value="viaturas">
+          <FleetList category="viaturas" />
         </TabsContent>
 
         <TabsContent value="equipamento">
-          <EquipmentInline />
+          <EquipmentList />
         </TabsContent>
       </Tabs>
     </div>
   );
-}
-
-// Re-export the page components without their outer title
-// We render them directly so they manage their own state/dialogs
-function FleetInline() {
-  return <FleetList />;
-}
-
-function EquipmentInline() {
-  return <EquipmentList />;
 }

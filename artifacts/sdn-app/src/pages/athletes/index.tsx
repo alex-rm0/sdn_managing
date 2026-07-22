@@ -19,7 +19,20 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Download, Upload, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Plus, Download, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+
+function JsonFormatHint({ example }: { example: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-xs">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+        {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        Ver formato JSON
+      </button>
+      {open && <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">{example}</pre>}
+    </div>
+  );
+}
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 // ── JSON import schema (lenient — accepts all valid athlete inputs) ──
@@ -401,9 +414,12 @@ export default function AthletesList() {
                     <span>{importParseError}</span>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Exemplo de formato: <code>{"[{ \"name\": \"João Silva\", \"birthDate\": \"2000-05-15\", \"gender\": \"M\", \"affiliationDate\": \"2020-01-01\" }]"}</code>
-                </p>
+                <JsonFormatHint example={IMPORT_EXAMPLE} />
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p><strong>gender</strong>: <code className="bg-muted px-1 rounded">M</code> | <code className="bg-muted px-1 rounded">F</code></p>
+                  <p><strong>status</strong>: <code className="bg-muted px-1 rounded">ativo</code> | <code className="bg-muted px-1 rounded">inativo</code> | <code className="bg-muted px-1 rounded">suspenso</code> (omissível, padrão: ativo)</p>
+                  <p><strong>birthDate</strong>, <strong>affiliationDate</strong>: formato <code className="bg-muted px-1 rounded">AAAA-MM-DD</code></p>
+                </div>
               </div>
             )}
 
