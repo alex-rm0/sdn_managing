@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListAthletes, useCreateAthlete, useUpdateAthlete, useDeleteAthlete,
-  getListAthletesQueryKey,
+  getListAthletesQueryKey, createAthlete,
 } from '@workspace/api-client-react';
 import type { Athlete } from '@workspace/api-client-react';
 import { Link } from 'wouter';
@@ -14,12 +14,36 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Download } from 'lucide-react';
+import { Search, Plus, Download, Upload, CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+// ── JSON import schema (lenient — accepts all valid athlete inputs) ──
+const importRowSchema = z.object({
+  name: z.string().min(1),
+  birthDate: z.string().min(1),
+  gender: z.enum(['M', 'F']),
+  affiliationDate: z.string().min(1),
+  status: z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  memberNumber: z.string().nullable().optional(),
+  fprNumber: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+type ImportRow = z.infer<typeof importRowSchema>;
+type ImportStatus = 'idle' | 'validating' | 'previewing' | 'importing' | 'done';
+type RowResult = { index: number; raw: unknown; parsed?: ImportRow; valid: boolean; validationError?: string; importStatus: 'pending' | 'ok' | 'error'; importError?: string };
+
+const IMPORT_EXAMPLE = JSON.stringify([
+  { name: "João Silva", birthDate: "2000-05-15", gender: "M", affiliationDate: "2020-01-01", status: "ativo", email: "joao@example.com", memberNumber: "AAC-001", fprNumber: "FPR-001" },
+  { name: "Ana Costa", birthDate: "2002-03-22", gender: "F", affiliationDate: "2021-06-01", status: "ativo" }
+], null, 2);
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -43,6 +67,15 @@ export default function AthletesList() {
   const [editing, setEditing] = useState<Athlete | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // ── Import dialog state ──
+  const [importOpen, setImportOpen] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importParseError, setImportParseError] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportStatus>('idle');
+  const [importRows, setImportRows] = useState<RowResult[]>([]);
+  const [importProgress, setImportProgress] = useState(0);
+  const importCancelRef = useRef(false);
 
   const { data: athletes, isLoading } = useListAthletes();
 
@@ -99,6 +132,95 @@ export default function AthletesList() {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
+  // ── Import helpers ──
+  const resetImport = () => {
+    setImportJson('');
+    setImportParseError(null);
+    setImportStatus('idle');
+    setImportRows([]);
+    setImportProgress(0);
+    importCancelRef.current = false;
+  };
+
+  const handleImportClose = () => {
+    if (importStatus === 'importing') return; // block close during import
+    importCancelRef.current = true;
+    setImportOpen(false);
+    if (importStatus === 'done') {
+      queryClient.invalidateQueries({ queryKey: getListAthletesQueryKey() });
+    }
+    setTimeout(resetImport, 300);
+  };
+
+  const handleValidate = () => {
+    setImportParseError(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(importJson.trim());
+    } catch {
+      setImportParseError('JSON inválido. Verifique a sintaxe do texto colado.');
+      return;
+    }
+    if (!Array.isArray(parsed)) {
+      setImportParseError('O JSON deve ser um array (lista) de atletas. Ex: [ { ... }, { ... } ]');
+      return;
+    }
+    const rows: RowResult[] = parsed.map((item, idx) => {
+      const result = importRowSchema.safeParse(item);
+      if (result.success) {
+        return { index: idx, raw: item, parsed: result.data, valid: true, importStatus: 'pending' };
+      } else {
+        const msg = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ');
+        return { index: idx, raw: item, valid: false, validationError: msg, importStatus: 'pending' };
+      }
+    });
+    setImportRows(rows);
+    setImportStatus('previewing');
+  };
+
+  const handleImport = async () => {
+    const validRows = importRows.filter(r => r.valid && r.parsed);
+    if (!validRows.length) return;
+
+    importCancelRef.current = false;
+    setImportStatus('importing');
+    setImportProgress(0);
+
+    const updated = [...importRows];
+    let done = 0;
+
+    for (const row of validRows) {
+      if (importCancelRef.current) break;
+      const idx = updated.findIndex(r => r.index === row.index);
+      try {
+        const data = {
+          ...row.parsed!,
+          email: row.parsed!.email || null,
+          phone: row.parsed!.phone || null,
+          memberNumber: row.parsed!.memberNumber || null,
+          fprNumber: row.parsed!.fprNumber || null,
+          notes: row.parsed!.notes || null,
+        };
+        await createAthlete({ data });
+        updated[idx] = { ...updated[idx], importStatus: 'ok' };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+        updated[idx] = { ...updated[idx], importStatus: 'error', importError: msg };
+      }
+      done++;
+      setImportProgress(done);
+      setImportRows([...updated]);
+    }
+
+    setImportStatus('done');
+    queryClient.invalidateQueries({ queryKey: getListAthletesQueryKey() });
+  };
+
+  const validCount = importRows.filter(r => r.valid).length;
+  const invalidCount = importRows.filter(r => !r.valid).length;
+  const okCount = importRows.filter(r => r.importStatus === 'ok').length;
+  const errCount = importRows.filter(r => r.importStatus === 'error').length;
+
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -108,6 +230,7 @@ export default function AthletesList() {
           <h1 className="text-3xl font-bold tracking-tight">Atletas</h1>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" /> Exportar</Button>
+            <Button variant="outline" size="sm" onClick={() => { resetImport(); setImportOpen(true); }}><Upload className="w-4 h-4 mr-2" /> Importar</Button>
             <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Atleta</Button>
           </div>
         </div>
@@ -182,6 +305,7 @@ export default function AthletesList() {
         </div>
       </div>
 
+      {/* ── Create / Edit dialog ── */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -247,6 +371,160 @@ export default function AthletesList() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import JSON dialog ── */}
+      <Dialog open={importOpen} onOpenChange={handleImportClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Importar Atletas via JSON</DialogTitle>
+            <DialogDescription>
+              Cole um array JSON com os atletas a importar. Campos obrigatórios: <code className="text-xs bg-muted px-1 rounded">name</code>, <code className="text-xs bg-muted px-1 rounded">birthDate</code>, <code className="text-xs bg-muted px-1 rounded">gender</code>, <code className="text-xs bg-muted px-1 rounded">affiliationDate</code>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden flex flex-col gap-4 min-h-0">
+
+            {/* ── Phase 1: input ── */}
+            {(importStatus === 'idle' || importStatus === 'validating') && (
+              <div className="flex flex-col gap-3 flex-1">
+                <Textarea
+                  className="flex-1 font-mono text-xs resize-none min-h-[220px]"
+                  placeholder={IMPORT_EXAMPLE}
+                  value={importJson}
+                  onChange={e => { setImportJson(e.target.value); setImportParseError(null); }}
+                />
+                {importParseError && (
+                  <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{importParseError}</span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Exemplo de formato: <code>{"[{ \"name\": \"João Silva\", \"birthDate\": \"2000-05-15\", \"gender\": \"M\", \"affiliationDate\": \"2020-01-01\" }]"}</code>
+                </p>
+              </div>
+            )}
+
+            {/* ── Phase 2 & 3: preview / results table ── */}
+            {(importStatus === 'previewing' || importStatus === 'importing' || importStatus === 'done') && (
+              <div className="flex flex-col gap-3 flex-1 min-h-0">
+                {/* Summary bar */}
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-medium">{importRows.length} linha(s) encontrada(s)</span>
+                  {invalidCount > 0 && (
+                    <span className="text-destructive flex items-center gap-1"><XCircle className="w-3.5 h-3.5" />{invalidCount} inválida(s)</span>
+                  )}
+                  <span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{validCount} válida(s)</span>
+                  {importStatus === 'importing' && (
+                    <span className="ml-auto text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />A importar {importProgress}/{validCount}…
+                    </span>
+                  )}
+                  {importStatus === 'done' && (
+                    <span className="ml-auto font-medium">
+                      {okCount > 0 && <span className="text-green-600">{okCount} importado(s) </span>}
+                      {errCount > 0 && <span className="text-destructive">{errCount} com erro</span>}
+                    </span>
+                  )}
+                </div>
+
+                <ScrollArea className="flex-1 rounded-md border min-h-0" style={{ maxHeight: 320 }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Nasc.</TableHead>
+                        <TableHead>G</TableHead>
+                        <TableHead>Filiação</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="w-8 text-center">✓</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importRows.map(row => {
+                        const raw = row.raw as Record<string, unknown>;
+                        return (
+                          <TableRow key={row.index} className={!row.valid ? 'bg-destructive/5' : ''}>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{row.index + 1}</TableCell>
+                            <TableCell className="max-w-[140px] truncate">
+                              {row.valid ? row.parsed!.name : (typeof raw?.name === 'string' ? raw.name : <span className="text-muted-foreground italic">—</span>)}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {row.valid ? row.parsed!.birthDate : (typeof raw?.birthDate === 'string' ? raw.birthDate : '—')}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {row.valid ? row.parsed!.gender : (typeof raw?.gender === 'string' ? raw.gender : '—')}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {row.valid ? row.parsed!.affiliationDate : (typeof raw?.affiliationDate === 'string' ? raw.affiliationDate : '—')}
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {row.valid ? (row.parsed!.status ?? 'ativo') : '—'}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {!row.valid ? (
+                                <span title={row.validationError}><XCircle className="w-4 h-4 text-destructive inline" /></span>
+                              ) : row.importStatus === 'pending' ? (
+                                <span className="w-4 h-4 rounded-full bg-muted inline-block" />
+                              ) : row.importStatus === 'ok' ? (
+                                <CheckCircle className="w-4 h-4 text-green-600 inline" />
+                              ) : row.importStatus === 'error' ? (
+                                <span title={row.importError}><XCircle className="w-4 h-4 text-destructive inline" /></span>
+                              ) : null}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+
+                {/* Validation errors detail */}
+                {importStatus === 'previewing' && invalidCount > 0 && (
+                  <div className="text-xs text-destructive space-y-1 max-h-20 overflow-y-auto">
+                    {importRows.filter(r => !r.valid).map(r => (
+                      <div key={r.index}>
+                        <span className="font-medium">Linha {r.index + 1}:</span> {r.validationError}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4 shrink-0">
+            {importStatus === 'idle' && (
+              <>
+                <Button variant="outline" onClick={handleImportClose}>Cancelar</Button>
+                <Button onClick={handleValidate} disabled={!importJson.trim()}>Validar JSON</Button>
+              </>
+            )}
+            {importStatus === 'previewing' && (
+              <>
+                <Button variant="outline" onClick={() => setImportStatus('idle')}>← Voltar</Button>
+                <Button onClick={handleImport} disabled={validCount === 0}>
+                  Importar {validCount} atleta{validCount !== 1 ? 's' : ''}
+                </Button>
+              </>
+            )}
+            {importStatus === 'importing' && (
+              <Button variant="outline" disabled>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />A importar…
+              </Button>
+            )}
+            {importStatus === 'done' && (
+              <>
+                <Button variant="outline" onClick={() => { setImportStatus('idle'); setImportJson(''); setImportRows([]); setImportProgress(0); }}>
+                  Nova Importação
+                </Button>
+                <Button onClick={handleImportClose}>Fechar</Button>
+              </>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

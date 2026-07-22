@@ -1,135 +1,185 @@
+import { Link } from 'wouter';
 import { useGetDashboard } from '@workspace/api-client-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Anchor, Wallet, Receipt, Sailboat, Dumbbell } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Users, Anchor, Trophy, Medal, Wallet, Receipt,
+  Package, Dumbbell, Clock, FileText, ShieldAlert,
+  CalendarDays, BarChart3, ArrowRight, Sailboat,
+} from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+
+interface SectionCard {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  color: string;
+}
+
+const sections: SectionCard[] = [
+  {
+    href: '/treinos',
+    icon: Dumbbell,
+    title: 'Treinos',
+    description: 'Registo de sessões e presenças',
+    color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/40',
+  },
+  {
+    href: '/atletas',
+    icon: Users,
+    title: 'Atletas',
+    description: 'Fichas, categorias e histórico',
+    color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
+  },
+  {
+    href: '/tripulacoes',
+    icon: Anchor,
+    title: 'Tripulações',
+    description: 'Composição das equipas por época',
+    color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40',
+  },
+  {
+    href: '/competicoes',
+    icon: Trophy,
+    title: 'Competições',
+    description: 'Eventos e provas oficiais',
+    color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/40',
+  },
+  {
+    href: '/resultados',
+    icon: Medal,
+    title: 'Resultados',
+    description: 'Classificações e tempos',
+    color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/40',
+  },
+  {
+    href: '/epocas',
+    icon: CalendarDays,
+    title: 'Épocas',
+    description: 'Gestão das épocas desportivas',
+    color: 'text-violet-600 bg-violet-50 dark:bg-violet-950/40',
+  },
+  {
+    href: '/financeiro',
+    icon: Wallet,
+    title: 'Financeiro',
+    description: 'Receitas, despesas e balanço',
+    color: 'text-green-600 bg-green-50 dark:bg-green-950/40',
+  },
+  {
+    href: '/quotas',
+    icon: Receipt,
+    title: 'Quotas',
+    description: 'Pagamentos e situação dos sócios',
+    color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/40',
+  },
+  {
+    href: '/inventario',
+    icon: Package,
+    title: 'Inventário',
+    description: 'Embarcações e equipamento',
+    color: 'text-slate-600 bg-slate-50 dark:bg-slate-900/40',
+  },
+  {
+    href: '/horarios',
+    icon: Clock,
+    title: 'Horários',
+    description: 'Planeamento semanal de treinos',
+    color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/40',
+  },
+  {
+    href: '/documentos',
+    icon: FileText,
+    title: 'Documentos',
+    description: 'Contratos, notícias e arquivo',
+    color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40',
+  },
+  {
+    href: '/utilizadores',
+    icon: ShieldAlert,
+    title: 'Utilizadores',
+    description: 'Contas e permissões de acesso',
+    color: 'text-gray-600 bg-gray-50 dark:bg-gray-900/40',
+  },
+];
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = useGetDashboard();
+  const { user } = useAuth();
+  const { data: stats } = useGetDashboard();
 
-  if (isLoading || !stats) {
-    return <div>A carregar dashboard...</div>;
-  }
+  const today = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' });
+  const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Atletas Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeAthletes}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tripulações</CardTitle>
-            <Anchor className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCrews}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balanço Mensal</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.monthlyBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {stats.monthlyBalance.toFixed(2)} €
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              +{stats.monthlyRevenue.toFixed(2)} € / -{stats.monthlyExpenses.toFixed(2)} €
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quotas em Atraso</CardTitle>
-            <Receipt className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.overdueQuotasCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total: {stats.overdueQuotasAmount.toFixed(2)} €
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Frota Disponível</CardTitle>
-            <Sailboat className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.fleetAvailableCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.fleetInMaintenanceCount} em manutenção
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">{todayFormatted}</p>
+          <h1 className="text-3xl font-bold tracking-tight mt-1">
+            Olá, {user?.name.split(' ')[0]} 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">Secção de Desportos Náuticos — AAC</p>
+        </div>
+        <Link href="/estatisticas">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+            <BarChart3 className="w-4 h-4" />
+            Ver estatísticas
+            <ArrowRight className="w-3.5 h-3.5" />
+          </div>
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Dumbbell className="h-5 w-5" /> Próximos Treinos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.upcomingSessions?.length ? (
-              <div className="space-y-4">
-                {stats.upcomingSessions.map(session => (
-                  <div key={session.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                    <div>
-                      <p className="font-medium text-sm">{session.groupCategory}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {session.date} • {session.startTime} - {session.endTime}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="capitalize">{session.trainingType}</Badge>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Não há treinos agendados brevemente.</p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Quick stats strip */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-card border rounded-lg px-4 py-3">
+            <p className="text-xs text-muted-foreground">Atletas ativos</p>
+            <p className="text-2xl font-bold">{stats.activeAthletes}</p>
+          </div>
+          <div className="bg-card border rounded-lg px-4 py-3">
+            <p className="text-xs text-muted-foreground">Tripulações</p>
+            <p className="text-2xl font-bold">{stats.totalCrews}</p>
+          </div>
+          <div className="bg-card border rounded-lg px-4 py-3">
+            <p className="text-xs text-muted-foreground">Quotas em atraso</p>
+            <p className="text-2xl font-bold text-destructive">{stats.overdueQuotasCount}</p>
+          </div>
+          <div className="bg-card border rounded-lg px-4 py-3">
+            <p className="text-xs text-muted-foreground">Frota disponível</p>
+            <p className="text-2xl font-bold">{stats.fleetAvailableCount}</p>
+          </div>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Últimos Resultados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.recentResults?.length ? (
-              <div className="space-y-4">
-                {stats.recentResults.map(result => (
-                  <div key={result.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                    <div>
-                      <p className="font-medium text-sm">{result.athleteName || result.crewName}</p>
-                      <p className="text-xs text-muted-foreground">{result.competitionName} - {result.raceName}</p>
+      {/* Section grid */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">Secções</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {sections.map((section) => {
+            const Icon = section.icon;
+            return (
+              <Link key={section.href} href={section.href}>
+                <Card className="group cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 border-border/60 h-full">
+                  <CardContent className="p-4 flex flex-col gap-3">
+                    <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center', section.color)}>
+                      <Icon className="w-4.5 h-4.5" />
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold">{result.position}º lugar</div>
-                      {result.time && <div className="text-xs text-muted-foreground">{result.time}</div>}
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm leading-snug">{section.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{section.description}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem resultados recentes registados.</p>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                      Aceder <ArrowRight className="w-3 h-3" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

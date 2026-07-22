@@ -9,6 +9,7 @@ import { Layout } from '@/components/Layout';
 // Page Imports
 import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
+import Estatisticas from '@/pages/estatisticas';
 import AthletesList from '@/pages/athletes/index';
 import AthleteDetail from '@/pages/athletes/detail';
 import CrewsList from '@/pages/crews/index';
@@ -17,6 +18,7 @@ import ResultsList from '@/pages/results/index';
 import CompetitionsList from '@/pages/competitions/index';
 import FinancialList from '@/pages/financial/index';
 import QuotasList from '@/pages/quotas/index';
+import InventarioPage from '@/pages/inventario/index';
 import FleetList from '@/pages/fleet/index';
 import EquipmentList from '@/pages/equipment/index';
 import TrainingsList from '@/pages/trainings/index';
@@ -82,11 +84,17 @@ function Router() {
       <Route path="/quotas">
         {() => <ProtectedRoute component={QuotasList} adminOnly />}
       </Route>
+      <Route path="/inventario">
+        {() => <ProtectedRoute component={InventarioPage} adminOnly />}
+      </Route>
       <Route path="/embarcacoes">
         {() => <ProtectedRoute component={FleetList} adminOnly />}
       </Route>
       <Route path="/equipamento">
         {() => <ProtectedRoute component={EquipmentList} adminOnly />}
+      </Route>
+      <Route path="/estatisticas">
+        {() => <ProtectedRoute component={Estatisticas} adminOnly />}
       </Route>
       <Route path="/treinos">
         {() => <ProtectedRoute component={TrainingsList} />}
