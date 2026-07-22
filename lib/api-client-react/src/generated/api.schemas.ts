@@ -1378,6 +1378,8 @@ export interface MeetingSection {
   items: string[];
 }
 
+export type MeetingStatus = 'preparacao' | 'a_decorrer' | 'finalizada';
+
 export interface MeetingMinutes {
   id: number;
   date: string;
@@ -1385,6 +1387,7 @@ export interface MeetingMinutes {
   agendaItems: MeetingAgendaItem[];
   sections: MeetingSection[];
   notes?: string | null;
+  status: MeetingStatus;
   createdAt: string;
 }
 
@@ -1394,6 +1397,7 @@ export interface MeetingMinutesInput {
   agendaItems?: MeetingAgendaItem[];
   sections?: MeetingSection[];
   notes?: string | null;
+  status?: string;
 }
 
 export interface MeetingMinutesUpdate {
@@ -1402,6 +1406,7 @@ export interface MeetingMinutesUpdate {
   agendaItems?: MeetingAgendaItem[];
   sections?: MeetingSection[];
   notes?: string | null;
+  status?: string;
 }
 
 // ── Team Members ──────────────────────────────────────────────────────────────

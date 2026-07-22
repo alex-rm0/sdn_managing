@@ -23,5 +23,6 @@ export const meetingMinutesTable = pgTable("meeting_minutes", {
     .notNull()
     .default([]),
   notes: text("notes"),
+  status: text("status").notNull().default("finalizada").$type<'preparacao' | 'a_decorrer' | 'finalizada'>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

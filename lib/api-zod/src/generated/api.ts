@@ -1939,6 +1939,7 @@ export const ListMeetingsResponseItem = zod.object({
   "agendaItems": zod.array(MeetingAgendaItemSchema),
   "sections": zod.array(MeetingSectionSchema),
   "notes": zod.string().nullish(),
+  "status": zod.string(),
   "createdAt": zod.coerce.date()
 })
 export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
@@ -1953,7 +1954,8 @@ export const CreateMeetingBody = zod.object({
   "attendees": zod.string(),
   "agendaItems": zod.array(MeetingAgendaItemSchema).optional(),
   "sections": zod.array(MeetingSectionSchema).optional(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "status": zod.string().optional()
 })
 
 export const UpdateMeetingParams = zod.object({
@@ -1965,7 +1967,8 @@ export const UpdateMeetingBody = zod.object({
   "attendees": zod.string().optional(),
   "agendaItems": zod.array(MeetingAgendaItemSchema).optional(),
   "sections": zod.array(MeetingSectionSchema).optional(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "status": zod.string().optional()
 })
 
 export const DeleteMeetingParams = zod.object({
