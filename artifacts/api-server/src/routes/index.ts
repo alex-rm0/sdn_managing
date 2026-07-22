@@ -12,6 +12,7 @@ import competitionsRouter from "./competitions";
 import financialRouter from "./financial";
 import documentsRouter from "./documents";
 import dashboardRouter from "./dashboard";
+import meetingsRouter from "./meetings";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(competitionsRouter);
 router.use(financialRouter);
 router.use(documentsRouter);
 router.use(dashboardRouter);
+router.use(meetingsRouter);
 
 export default router;

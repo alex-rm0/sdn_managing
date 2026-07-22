@@ -1918,3 +1918,58 @@ export const GetDashboardResponse = zod.object({
 })
 
 
+
+
+// ── Meeting Minutes ───────────────────────────────────────────────────────────
+
+const MeetingAgendaItemSchema = zod.object({
+  "text": zod.string(),
+  "pending": zod.boolean()
+})
+
+const MeetingSectionSchema = zod.object({
+  "title": zod.string(),
+  "items": zod.array(zod.string())
+})
+
+export const ListMeetingsResponseItem = zod.object({
+  "id": zod.number(),
+  "date": zod.string(),
+  "attendees": zod.string(),
+  "agendaItems": zod.array(MeetingAgendaItemSchema),
+  "sections": zod.array(MeetingSectionSchema),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem)
+
+export const GetMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+export const GetMeetingResponse = ListMeetingsResponseItem
+
+export const CreateMeetingBody = zod.object({
+  "date": zod.string(),
+  "attendees": zod.string(),
+  "agendaItems": zod.array(MeetingAgendaItemSchema).optional(),
+  "sections": zod.array(MeetingSectionSchema).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMeetingBody = zod.object({
+  "date": zod.string().optional(),
+  "attendees": zod.string().optional(),
+  "agendaItems": zod.array(MeetingAgendaItemSchema).optional(),
+  "sections": zod.array(MeetingSectionSchema).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const DeleteMeetingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMeetingResponse = zod.void()

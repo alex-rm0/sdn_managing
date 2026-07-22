@@ -1365,3 +1365,41 @@ export type GetDashboardParams = {
 seasonId?: number;
 };
 
+
+// ── Meeting Minutes ───────────────────────────────────────────────────────────
+
+export interface MeetingAgendaItem {
+  text: string;
+  pending: boolean;
+}
+
+export interface MeetingSection {
+  title: string;
+  items: string[];
+}
+
+export interface MeetingMinutes {
+  id: number;
+  date: string;
+  attendees: string;
+  agendaItems: MeetingAgendaItem[];
+  sections: MeetingSection[];
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface MeetingMinutesInput {
+  date: string;
+  attendees: string;
+  agendaItems?: MeetingAgendaItem[];
+  sections?: MeetingSection[];
+  notes?: string | null;
+}
+
+export interface MeetingMinutesUpdate {
+  date?: string;
+  attendees?: string;
+  agendaItems?: MeetingAgendaItem[];
+  sections?: MeetingSection[];
+  notes?: string | null;
+}

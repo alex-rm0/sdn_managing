@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   FileText,
   LogOut,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -71,6 +72,7 @@ const adminGroups: NavGroup[] = [
   {
     label: 'Administração',
     items: [
+      { href: '/reunioes',     label: 'Reuniões',     icon: BookOpen },
       { href: '/documentos',   label: 'Documentos',   icon: FileText },
       { href: '/utilizadores', label: 'Utilizadores', icon: ShieldAlert },
     ],

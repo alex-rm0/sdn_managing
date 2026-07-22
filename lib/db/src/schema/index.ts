@@ -8,3 +8,4 @@ export * from "./training";
 export * from "./competitions";
 export * from "./financial";
 export * from "./documents";
+export * from "./meetings";
