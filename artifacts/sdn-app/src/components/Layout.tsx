@@ -113,10 +113,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 py-3 overflow-y-auto">
+        <nav className="flex-1 py-2 overflow-y-auto">
           {groups.map((group) => (
-            <div key={group.label} className="mb-1">
-              <p className="px-5 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            <div key={group.label} className="mb-0.5">
+              <p className="px-5 py-1 text-[9px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
                 {group.label}
               </p>
               <ul className="space-y-0.5 px-2">
@@ -130,13 +130,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                          'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors',
                           isActive
                             ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                             : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                         )}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="w-3.5 h-3.5 shrink-0" />
                         {item.label}
                       </Link>
                     </li>
