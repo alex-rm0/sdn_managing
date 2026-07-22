@@ -9,9 +9,11 @@
 export interface ResultInput {
   raceId: number;
   /** @nullable */
-  athleteId?: number | null;
+  athleteNames?: string | null;
   /** @nullable */
-  crewId?: number | null;
+  boatClass?: string | null;
+  /** @nullable */
+  escalao?: string | null;
   /** @nullable */
   position?: number | null;
   /** @nullable */

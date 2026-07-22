@@ -12,7 +12,6 @@ import Dashboard from '@/pages/dashboard';
 import Estatisticas from '@/pages/estatisticas';
 import AthletesList from '@/pages/athletes/index';
 import AthleteDetail from '@/pages/athletes/detail';
-import CrewsList from '@/pages/crews/index';
 import SeasonsList from '@/pages/seasons/index';
 import ResultsList from '@/pages/results/index';
 import CompetitionsList from '@/pages/competitions/index';
@@ -65,9 +64,6 @@ function Router() {
       </Route>
       <Route path="/atletas/:id">
         {() => <ProtectedRoute component={AthleteDetail} adminOnly />}
-      </Route>
-      <Route path="/tripulacoes">
-        {() => <ProtectedRoute component={CrewsList} adminOnly />}
       </Route>
       <Route path="/epocas">
         {() => <ProtectedRoute component={SeasonsList} adminOnly />}

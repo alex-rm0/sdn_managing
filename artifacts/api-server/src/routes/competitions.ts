@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, competitionsTable, racesTable, resultsTable, seasonsTable, athletesTable, crewsTable } from "@workspace/db";
+import { db, competitionsTable, racesTable, resultsTable, seasonsTable, athletesTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import {
@@ -112,18 +112,15 @@ router.delete("/races/:id", requireAdmin, async (req, res): Promise<void> => {
 async function enrichResult(result: typeof resultsTable.$inferSelect) {
   const [race] = await db.select().from(racesTable).where(eq(racesTable.id, result.raceId));
   const [comp] = race ? await db.select().from(competitionsTable).where(eq(competitionsTable.id, race.competitionId)) : [];
-  const athlete = result.athleteId ? (await db.select().from(athletesTable).where(eq(athletesTable.id, result.athleteId)))[0] : null;
-  const crew = result.crewId ? (await db.select().from(crewsTable).where(eq(crewsTable.id, result.crewId)))[0] : null;
   return {
     id: result.id,
     raceId: result.raceId,
     raceName: race?.name ?? null,
     competitionName: comp?.name ?? null,
     competitionDate: comp?.startDate ?? null,
-    athleteId: result.athleteId,
-    athleteName: athlete?.name ?? null,
-    crewId: result.crewId,
-    crewName: crew?.name ?? null,
+    athleteNames: result.athleteNames ?? null,
+    boatClass: result.boatClass ?? null,
+    escalao: result.escalao ?? null,
     position: result.position,
     time: result.time,
     points: result.points ? Number(result.points) : null,
@@ -136,7 +133,6 @@ router.get("/results", requireAuth, async (req, res): Promise<void> => {
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
   let rows = await db.select().from(resultsTable);
   if (query.data.athleteId) rows = rows.filter(r => r.athleteId === Number(query.data.athleteId));
-  if (query.data.crewId) rows = rows.filter(r => r.crewId === Number(query.data.crewId));
   if (query.data.raceId) rows = rows.filter(r => r.raceId === Number(query.data.raceId));
   if (query.data.competitionId) {
     const races = await db.select({ id: racesTable.id }).from(racesTable).where(eq(racesTable.competitionId, Number(query.data.competitionId)));

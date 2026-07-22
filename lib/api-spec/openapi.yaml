@@ -2010,10 +2010,6 @@ components:
           type: ["string", "null"]
         categoryOverride:
           type: ["string", "null"]
-        crewHistory:
-          type: array
-          items:
-            $ref: "#/components/schemas/CrewHistoryItem"
         resultHistory:
           type: array
           items:
@@ -2689,13 +2685,11 @@ components:
           type: ["string", "null"]
         competitionDate:
           type: ["string", "null"]
-        athleteId:
-          type: ["integer", "null"]
-        athleteName:
+        athleteNames:
           type: ["string", "null"]
-        crewId:
-          type: ["integer", "null"]
-        crewName:
+        boatClass:
+          type: ["string", "null"]
+        escalao:
           type: ["string", "null"]
         position:
           type: ["integer", "null"]
@@ -2712,10 +2706,12 @@ components:
       properties:
         raceId:
           type: integer
-        athleteId:
-          type: ["integer", "null"]
-        crewId:
-          type: ["integer", "null"]
+        athleteNames:
+          type: ["string", "null"]
+        boatClass:
+          type: ["string", "null"]
+        escalao:
+          type: ["string", "null"]
         position:
           type: ["integer", "null"]
         time:
@@ -2728,6 +2724,12 @@ components:
     ResultUpdate:
       type: object
       properties:
+        athleteNames:
+          type: ["string", "null"]
+        boatClass:
+          type: ["string", "null"]
+        escalao:
+          type: ["string", "null"]
         position:
           type: ["integer", "null"]
         time:
@@ -3103,7 +3105,7 @@ components:
           type: ["string", "null"]
         activeAthletes:
           type: integer
-        totalCrews:
+        totalResults:
           type: integer
         upcomingSessions:
           type: array

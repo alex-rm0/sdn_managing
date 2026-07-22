@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, athletesTable, crewsTable, trainingSessionsTable, resultsTable, racesTable, competitionsTable, financialMovementsTable, quotasTable, paymentsTable, fleetItemsTable } from "@workspace/db";
+import { db, athletesTable, trainingSessionsTable, resultsTable, racesTable, competitionsTable, financialMovementsTable, quotasTable, paymentsTable, fleetItemsTable } from "@workspace/db";
 import { eq, and, inArray, gte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { GetDashboardQueryParams } from "@workspace/api-zod";
@@ -10,9 +10,9 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const query = GetDashboardQueryParams.safeParse(req.query);
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
 
-  const [activeAthletes, totalCrewsResult, upcomingSessions, allFleet] = await Promise.all([
+  const [activeAthletes, allResultsCount, upcomingSessions, allFleet] = await Promise.all([
     db.select().from(athletesTable).where(eq(athletesTable.status, "ativo")),
-    db.select().from(crewsTable),
+    db.select().from(resultsTable),
     db.select().from(trainingSessionsTable).orderBy(trainingSessionsTable.date),
     db.select().from(fleetItemsTable),
   ]);
@@ -26,7 +26,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const recentResults = await db.select().from(resultsTable).orderBy(resultsTable.id);
   const topResults = recentResults.slice(-5).map(r => ({
     id: r.id, raceId: r.raceId, raceName: null, competitionName: null, competitionDate: null,
-    athleteId: r.athleteId, athleteName: null, crewId: r.crewId, crewName: null,
+    athleteNames: r.athleteNames ?? null, boatClass: r.boatClass ?? null, escalao: r.escalao ?? null,
     position: r.position, time: r.time, points: r.points ? Number(r.points) : null, notes: r.notes,
   }));
 
@@ -63,7 +63,7 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     seasonId: query.data.seasonId ?? null,
     seasonName: null,
     activeAthletes: activeAthletes.length,
-    totalCrews: totalCrewsResult.length,
+    totalResults: allResultsCount.length,
     upcomingSessions: todaySessions,
     recentResults: topResults,
     monthlyBalance: monthlyRevenue - monthlyExpenses,

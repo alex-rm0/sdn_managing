@@ -199,13 +199,11 @@ export interface Result {
   /** @nullable */
   competitionDate?: string | null;
   /** @nullable */
-  athleteId?: number | null;
+  athleteNames?: string | null;
   /** @nullable */
-  athleteName?: string | null;
+  boatClass?: string | null;
   /** @nullable */
-  crewId?: number | null;
-  /** @nullable */
-  crewName?: string | null;
+  escalao?: string | null;
   /** @nullable */
   position?: number | null;
   /** @nullable */
@@ -300,7 +298,6 @@ export interface AthleteDetail {
   notes?: string | null;
   /** @nullable */
   categoryOverride?: string | null;
-  crewHistory?: CrewHistoryItem[];
   resultHistory?: Result[];
   quotaSummary?: AthleteQuotaSummary;
 }
@@ -922,9 +919,11 @@ export interface RaceUpdate {
 export interface ResultInput {
   raceId: number;
   /** @nullable */
-  athleteId?: number | null;
+  athleteNames?: string | null;
   /** @nullable */
-  crewId?: number | null;
+  boatClass?: string | null;
+  /** @nullable */
+  escalao?: string | null;
   /** @nullable */
   position?: number | null;
   /** @nullable */
@@ -936,6 +935,12 @@ export interface ResultInput {
 }
 
 export interface ResultUpdate {
+  /** @nullable */
+  athleteNames?: string | null;
+  /** @nullable */
+  boatClass?: string | null;
+  /** @nullable */
+  escalao?: string | null;
   /** @nullable */
   position?: number | null;
   /** @nullable */
@@ -1251,7 +1256,7 @@ export interface DashboardStats {
   /** @nullable */
   seasonName?: string | null;
   activeAthletes: number;
-  totalCrews?: number;
+  totalResults?: number;
   upcomingSessions: TrainingSession[];
   recentResults?: Result[];
   monthlyBalance: number;
@@ -1311,7 +1316,6 @@ category?: string;
 export type ListResultsParams = {
 seasonId?: number;
 athleteId?: number;
-crewId?: number;
 competitionId?: number;
 raceId?: number;
 };

@@ -9,7 +9,6 @@
 export type ListResultsParams = {
 seasonId?: number;
 athleteId?: number;
-crewId?: number;
 competitionId?: number;
 raceId?: number;
 };

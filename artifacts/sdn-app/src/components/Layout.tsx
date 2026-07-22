@@ -6,7 +6,6 @@ import {
   Home,
   BarChart3,
   Users,
-  Anchor,
   CalendarDays,
   Trophy,
   Medal,
@@ -51,7 +50,6 @@ const adminGroups: NavGroup[] = [
     label: 'Desporto',
     items: [
       { href: '/atletas',     label: 'Atletas',     icon: Users },
-      { href: '/tripulacoes', label: 'Tripulações', icon: Anchor },
       { href: '/competicoes', label: 'Competições', icon: Trophy },
       { href: '/resultados',  label: 'Resultados',  icon: Medal },
     ],
@@ -107,7 +105,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-5 border-b border-sidebar-border/50 flex items-center gap-3">
           <img src="/logo-sdn.png" alt="SDN" className="w-8 h-8 object-contain opacity-90" />
           <div>
-            <p className="text-sm font-bold leading-none">SDN Gestão</p>
+            <p className="text-sm font-bold leading-none">SDN</p>
             <p className="text-[10px] text-sidebar-foreground/50 mt-0.5 uppercase tracking-wider">AAC</p>
           </div>
         </div>

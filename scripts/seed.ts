@@ -26,12 +26,12 @@ async function seed() {
   console.log("🌱 A semear dados de exemplo...");
 
   // Users
-  const adminHash = await bcrypt.hash("admin123", 10);
+  const adminHash = await bcrypt.hash("admin", 10);
   const trainerHash = await bcrypt.hash("treino123", 10);
 
   const [admin] = await db.insert(usersTable).values({
-    name: "António Silva",
-    email: "admin@sdn-aac.pt",
+    name: "Administrador",
+    email: "admin",
     passwordHash: adminHash,
     role: "admin",
     active: true,

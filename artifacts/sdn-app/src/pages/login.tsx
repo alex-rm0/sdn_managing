@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().min(1, 'Utilizador obrigatório'),
   password: z.string().min(1, 'A palavra-passe é obrigatória'),
 });
 
@@ -56,7 +56,7 @@ export default function Login() {
             <img src="/logo-sdn.png" alt="SDN" className="w-28 h-28 object-contain" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">
-            SDN Gestão Interna
+            SDN
           </CardTitle>
           <CardDescription className="text-sm">
             Associação Académica de Coimbra
@@ -70,9 +70,9 @@ export default function Login() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Utilizador</FormLabel>
                     <FormControl>
-                      <Input placeholder="direcao@sdnaac.pt" type="email" {...field} />
+                      <Input placeholder="admin" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

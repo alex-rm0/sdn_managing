@@ -120,7 +120,6 @@ export default function AthleteDetail() {
         <Tabs defaultValue="info">
           <TabsList>
             <TabsTrigger value="info">Informação</TabsTrigger>
-            <TabsTrigger value="tripulacoes">Tripulações</TabsTrigger>
             <TabsTrigger value="resultados">Resultados</TabsTrigger>
             <TabsTrigger value="presencas">Presenças</TabsTrigger>
           </TabsList>
@@ -154,39 +153,27 @@ export default function AthleteDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="tripulacoes" className="mt-4">
-            {(!athlete.crewHistory || athlete.crewHistory.length === 0) ? (
-              <p className="text-center py-8 text-muted-foreground">Sem histórico de tripulações.</p>
-            ) : (
-              <div className="bg-card rounded-md border">
-                <Table>
-                  <TableHeader><TableRow><TableHead>Tripulação</TableHead><TableHead>Época</TableHead><TableHead>Classe</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {athlete.crewHistory.map(c => (
-                      <TableRow key={c.crewId}>
-                        <TableCell className="font-medium">{c.crewName}</TableCell>
-                        <TableCell>{c.seasonName}</TableCell>
-                        <TableCell><Badge variant="outline">{c.boatClass}</Badge></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-
           <TabsContent value="resultados" className="mt-4">
             {(!athlete.resultHistory || athlete.resultHistory.length === 0) ? (
               <p className="text-center py-8 text-muted-foreground">Sem resultados registados.</p>
             ) : (
               <div className="bg-card rounded-md border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Competição</TableHead><TableHead>Prova</TableHead><TableHead>Posição</TableHead><TableHead>Tempo</TableHead></TableRow></TableHeader>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Atletas</TableHead>
+                      <TableHead>Classe</TableHead>
+                      <TableHead>Escalão</TableHead>
+                      <TableHead>Posição</TableHead>
+                      <TableHead>Tempo</TableHead>
+                    </TableRow>
+                  </TableHeader>
                   <TableBody>
                     {athlete.resultHistory.map(r => (
                       <TableRow key={r.id}>
-                        <TableCell>{r.competitionName || '-'}</TableCell>
-                        <TableCell>{r.raceName || '-'}</TableCell>
+                        <TableCell className="text-sm">{r.athleteNames || '-'}</TableCell>
+                        <TableCell><Badge variant="outline">{r.boatClass || '-'}</Badge></TableCell>
+                        <TableCell>{r.escalao || '-'}</TableCell>
                         <TableCell>{r.position ? <Badge variant={r.position === 1 ? 'warning' : r.position <= 3 ? 'secondary' : 'outline'}><Trophy className="w-3 h-3 mr-1" />{r.position}º</Badge> : '-'}</TableCell>
                         <TableCell className="font-mono text-xs">{r.time || '-'}</TableCell>
                       </TableRow>

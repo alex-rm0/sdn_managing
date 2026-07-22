@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, athletesTable, athleteCategoryOverridesTable, categoryRulesTable, crewsTable, crewAthletesTable, seasonsTable, resultsTable, racesTable, competitionsTable, quotasTable, paymentsTable } from "@workspace/db";
+import { db, athletesTable, athleteCategoryOverridesTable, categoryRulesTable, seasonsTable, resultsTable, racesTable, competitionsTable, quotasTable, paymentsTable } from "@workspace/db";
 import { eq, and, ilike, or, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import {
@@ -77,32 +77,13 @@ router.get("/athletes/:id", requireAuth, async (req, res): Promise<void> => {
   const categoryRules = await db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge);
   const category = computeCategory(athlete.birthDate, categoryRules);
 
-  // Crew history
-  const crewMemberships = await db.select({
-    crewId: crewAthletesTable.crewId,
-  }).from(crewAthletesTable).where(eq(crewAthletesTable.athleteId, athlete.id));
-
-  const crewIds = crewMemberships.map(m => m.crewId);
-  let crewHistory: any[] = [];
-  if (crewIds.length > 0) {
-    const crews = await db.select().from(crewsTable).where(inArray(crewsTable.id, crewIds));
-    const seasonIds = [...new Set(crews.map(c => c.seasonId))];
-    const seasons = await db.select().from(seasonsTable).where(inArray(seasonsTable.id, seasonIds));
-    crewHistory = crews.map(c => ({
-      crewId: c.id,
-      crewName: c.name,
-      boatClass: c.boatClass,
-      seasonId: c.seasonId,
-      seasonName: seasons.find(s => s.id === c.seasonId)?.name ?? "",
-    }));
-  }
-
-  // Results
+  // Results (linked by athleteId for individually-linked entries)
   const results = await db.select({
     id: resultsTable.id,
     raceId: resultsTable.raceId,
-    athleteId: resultsTable.athleteId,
-    crewId: resultsTable.crewId,
+    athleteNames: resultsTable.athleteNames,
+    boatClass: resultsTable.boatClass,
+    escalao: resultsTable.escalao,
     position: resultsTable.position,
     time: resultsTable.time,
     points: resultsTable.points,
@@ -129,7 +110,7 @@ router.get("/athletes/:id", requireAuth, async (req, res): Promise<void> => {
     quotas: [],
   };
 
-  res.json({ ...athlete, category, categoryOverride: null, crewHistory, resultHistory: results, quotaSummary });
+  res.json({ ...athlete, category, categoryOverride: null, resultHistory: results, quotaSummary });
 });
 
 router.patch("/athletes/:id", requireAdmin, async (req, res): Promise<void> => {

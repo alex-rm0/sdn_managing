@@ -1,3 +1,6 @@
 - [Orval codegen quirks](orval-codegen-quirks.md) — format:email → zod.email() error; path+query params create type name collisions
 - [bcrypt pnpm approval](bcrypt-pnpm.md) — bcrypt needs onlyBuiltDependencies in root package.json to build native addon
 - [Drizzle serial vs integer](drizzle-nullable-columns.md) — use integer() not serial() for nullable numeric columns in Drizzle schema
+- [No codegen script](no-codegen-script.md) — there is no orval/codegen script; generated files must be edited manually after schema changes
+- [Sessions table and db push](sessions-table-drizzle.md) — push-force drops the sessions table; recreate manually with SQL after any force push
+- [Admin credentials](admin-credentials.md) — login is username-based (not email-validated); credentials are admin/admin; email field stores "admin"

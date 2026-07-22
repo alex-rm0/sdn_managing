@@ -2,9 +2,9 @@ import { Link } from 'wouter';
 import { useGetDashboard } from '@workspace/api-client-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Users, Anchor, Trophy, Medal, Wallet, Receipt,
+  Users, Trophy, Medal, Wallet, Receipt,
   Package, Dumbbell, Clock, FileText, ShieldAlert,
-  CalendarDays, BarChart3, ArrowRight, Sailboat,
+  CalendarDays, BarChart3, ArrowRight,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,13 +32,6 @@ const sections: SectionCard[] = [
     title: 'Atletas',
     description: 'Fichas, categorias e histórico',
     color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40',
-  },
-  {
-    href: '/tripulacoes',
-    icon: Anchor,
-    title: 'Tripulações',
-    description: 'Composição das equipas por época',
-    color: 'text-cyan-600 bg-cyan-50 dark:bg-cyan-950/40',
   },
   {
     href: '/competicoes',
@@ -140,8 +133,8 @@ export default function Dashboard() {
             <p className="text-2xl font-bold">{stats.activeAthletes}</p>
           </div>
           <div className="bg-card border rounded-lg px-4 py-3">
-            <p className="text-xs text-muted-foreground">Tripulações</p>
-            <p className="text-2xl font-bold">{stats.totalCrews}</p>
+            <p className="text-xs text-muted-foreground">Resultados</p>
+            <p className="text-2xl font-bold">{stats.totalResults}</p>
           </div>
           <div className="bg-card border rounded-lg px-4 py-3">
             <p className="text-xs text-muted-foreground">Quotas em atraso</p>

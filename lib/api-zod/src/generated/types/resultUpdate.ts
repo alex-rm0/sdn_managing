@@ -8,6 +8,12 @@
 
 export interface ResultUpdate {
   /** @nullable */
+  athleteNames?: string | null;
+  /** @nullable */
+  boatClass?: string | null;
+  /** @nullable */
+  escalao?: string | null;
+  /** @nullable */
   position?: number | null;
   /** @nullable */
   time?: string | null;

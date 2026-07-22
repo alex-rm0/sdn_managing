@@ -16,13 +16,11 @@ export interface Result {
   /** @nullable */
   competitionDate?: string | null;
   /** @nullable */
-  athleteId?: number | null;
+  athleteNames?: string | null;
   /** @nullable */
-  athleteName?: string | null;
+  boatClass?: string | null;
   /** @nullable */
-  crewId?: number | null;
-  /** @nullable */
-  crewName?: string | null;
+  escalao?: string | null;
   /** @nullable */
   position?: number | null;
   /** @nullable */
