@@ -1098,6 +1098,7 @@ export interface QuotaPlanUpdate {
 export interface GenerateQuotasInput {
   seasonId: number;
   quotaPlanId: number;
+  period?: string;
 }
 
 /**

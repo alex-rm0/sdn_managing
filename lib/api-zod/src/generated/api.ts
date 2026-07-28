@@ -1621,7 +1621,8 @@ export const ListQuotasResponse = zod.array(ListQuotasResponseItem)
  */
 export const GenerateQuotasBody = zod.object({
   "seasonId": zod.number(),
-  "quotaPlanId": zod.number()
+  "quotaPlanId": zod.number(),
+  "period": zod.string().optional()
 })
 
 export const GenerateQuotasResponseItem = zod.object({

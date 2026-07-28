@@ -174,17 +174,25 @@ router.get("/quotas/generate", requireAdmin, async (_req, res): Promise<void> =>
 router.post("/quotas/generate", requireAdmin, async (req, res): Promise<void> => {
   const parsed = GenerateQuotasBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { seasonId, quotaPlanId } = parsed.data;
+  const { seasonId, quotaPlanId, period } = parsed.data;
   const [plan] = await db.select().from(quotaPlansTable).where(eq(quotaPlansTable.id, quotaPlanId));
   if (!plan) { res.status(404).json({ error: "Plano não encontrado" }); return; }
 
-  // Get athletes with matching category
-  const athletes = await db.select().from(athletesTable).where(eq(athletesTable.status, "ativo"));
+  let athletes = await db.select().from(athletesTable).where(eq(athletesTable.status, "ativo"));
+
+  // Avoid duplicates: skip athletes that already have a quota for this season+period
+  if (period) {
+    const existing = await db.select({ athleteId: quotasTable.athleteId })
+      .from(quotasTable)
+      .where(and(eq(quotasTable.seasonId, seasonId), eq(quotasTable.period, period)));
+    const existingIds = new Set(existing.map(q => q.athleteId));
+    athletes = athletes.filter(a => !existingIds.has(a.id));
+  }
 
   const quotaValues: Array<typeof quotasTable.$inferInsert> = athletes.map(a => ({
     athleteId: a.id,
     seasonId,
-    period: null,
+    period: period ?? null,
     amountDue: plan.amount,
     dueDate: null,
   }));
