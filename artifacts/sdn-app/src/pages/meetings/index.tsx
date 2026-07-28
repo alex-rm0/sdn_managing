@@ -525,6 +525,7 @@ export default function MeetingsList() {
   const deleteMutation = useDeleteMeeting();
 
   // Search
+  const [activeTab, setActiveTab] = useState<'todas' | 'a_decorrer' | 'preparacao' | 'finalizada'>('todas');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -567,11 +568,12 @@ export default function MeetingsList() {
   }, [meetings, search, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
-    const aDecorrer = filtered.filter(m => m.status === 'a_decorrer');
-    const preparacao = filtered.filter(m => m.status === 'preparacao').sort((a, b) => a.date.localeCompare(b.date));
-    const finalizadas = filtered.filter(m => m.status === 'finalizada');
+    const base = activeTab === 'todas' ? filtered : filtered.filter(m => m.status === activeTab);
+    const aDecorrer = base.filter(m => m.status === 'a_decorrer');
+    const preparacao = base.filter(m => m.status === 'preparacao').sort((a, b) => a.date.localeCompare(b.date));
+    const finalizadas = base.filter(m => m.status === 'finalizada');
     return [...aDecorrer, ...preparacao, ...finalizadas];
-  }, [filtered]);
+  }, [filtered, activeTab]);
 
   // ── Prep dialog handlers ──────────────────────────────────────────────────
 
@@ -747,6 +749,50 @@ export default function MeetingsList() {
             </Button>
           </div>
         </div>
+
+        {/* Tabs */}
+        {meetings.length > 0 && (() => {
+          const counts = {
+            todas: meetings.length,
+            a_decorrer: meetings.filter(m => m.status === 'a_decorrer').length,
+            preparacao: meetings.filter(m => m.status === 'preparacao').length,
+            finalizada: meetings.filter(m => m.status === 'finalizada').length,
+          };
+          const tabs = [
+            { key: 'todas', label: 'Todas' },
+            { key: 'a_decorrer', label: 'A decorrer' },
+            { key: 'preparacao', label: 'Em preparação' },
+            { key: 'finalizada', label: 'Finalizadas' },
+          ] as const;
+          return (
+            <div className="flex gap-1 border-b">
+              {tabs.map(tab => {
+                const count = counts[tab.key];
+                const active = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 transition-colors -mb-px ${
+                      active
+                        ? 'border-primary text-primary font-medium'
+                        : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    {tab.label}
+                    {count > 0 && (
+                      <span className={`text-[11px] rounded-full px-1.5 py-0 font-medium ${
+                        active ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Pending items panel */}
         {allPending.length > 0 && (
