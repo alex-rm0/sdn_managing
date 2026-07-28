@@ -143,6 +143,7 @@ async function enrichQuota(quota: typeof quotasTable.$inferSelect) {
     seasonId: quota.seasonId,
     seasonName: seasonRow[0]?.name ?? null,
     period: quota.period,
+    category: quota.category,
     amountDue,
     amountPaid,
     amountOwed: amountDue - amountPaid,
@@ -193,6 +194,7 @@ router.post("/quotas/generate", requireAdmin, async (req, res): Promise<void> =>
     athleteId: a.id,
     seasonId,
     period: period ?? null,
+    category: plan.category,
     amountDue: plan.amount,
     dueDate: null,
   }));

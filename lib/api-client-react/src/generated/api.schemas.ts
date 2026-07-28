@@ -258,6 +258,8 @@ export interface Quota {
   seasonName?: string | null;
   /** @nullable */
   period?: string | null;
+  /** @nullable */
+  category?: string | null;
   amountDue: number;
   amountPaid: number;
   amountOwed?: number;

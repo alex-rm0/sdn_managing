@@ -122,6 +122,7 @@ export default function QuotasList() {
 
   // ── Filters ──────────────────────────────────────────────────────────────
   const [seasonId, setSeasonId] = useState('');
+  const [escalaoFilter, setEscalaoFilter] = useState('');
   const [viewMode, setViewMode] = useState<'month' | 'overview'>('month');
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -176,9 +177,20 @@ export default function QuotasList() {
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
+  // ── Escalão options (unique categories for current season) ───────────────
+  const escalaoOptions: SelectOption[] = useMemo(() => {
+    const seen = new Set<string>();
+    quotas.forEach(q => { if (q.category) seen.add(q.category); });
+    return [...seen].sort((a, b) => a.localeCompare(b, 'pt')).map(c => ({ value: c, label: c }));
+  }, [quotas]);
+
   const monthQuotas = useMemo(() =>
-    quotas.filter(q => q.period === currentPeriod),
-    [quotas, currentPeriod]
+    quotas.filter(q => {
+      if (q.period !== currentPeriod) return false;
+      if (escalaoFilter && q.category !== escalaoFilter) return false;
+      return true;
+    }),
+    [quotas, currentPeriod, escalaoFilter]
   );
 
   const filteredMonthQuotas = useMemo(() => {
@@ -197,14 +209,16 @@ export default function QuotasList() {
     total: monthQuotas.length,
   }), [monthQuotas]);
 
-  // Matrix data: unique athletes + months 1-12 for current year
+  // Matrix data: unique athletes filtered by escalão
   const matrixAthletes = useMemo(() => {
     const seen = new Map<number, string>();
     quotas.forEach(q => {
-      if (q.athleteId && q.athleteName) seen.set(q.athleteId, q.athleteName);
+      if (q.athleteId && q.athleteName) {
+        if (!escalaoFilter || q.category === escalaoFilter) seen.set(q.athleteId, q.athleteName);
+      }
     });
     return [...seen.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'pt'));
-  }, [quotas]);
+  }, [quotas, escalaoFilter]);
 
   const matrixLookup = useMemo(() => {
     const map = new Map<string, Quota>();
@@ -273,10 +287,24 @@ export default function QuotasList() {
             <SearchableSelect
               options={seasonOptions}
               value={seasonId}
-              onChange={setSeasonId}
+              onChange={v => { setSeasonId(v); setEscalaoFilter(''); }}
               placeholder="Selecionar época"
               className="w-[180px]"
             />
+            {/* Escalão filter */}
+            {escalaoOptions.length > 0 && (
+              <Select value={escalaoFilter} onValueChange={setEscalaoFilter}>
+                <SelectTrigger className={`w-[150px] h-9 text-sm ${escalaoFilter ? 'border-primary text-primary' : ''}`}>
+                  <SelectValue placeholder="Todos os escalões" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Todos os escalões</SelectItem>
+                  {escalaoOptions.map(o => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {/* View mode toggle */}
             <div className="flex rounded-md border overflow-hidden">
               <button

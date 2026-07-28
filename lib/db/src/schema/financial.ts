@@ -38,6 +38,7 @@ export const quotasTable = pgTable("quotas", {
   athleteId: integer("athlete_id").notNull().references(() => athletesTable.id, { onDelete: "cascade" }),
   seasonId: integer("season_id").notNull().references(() => seasonsTable.id, { onDelete: "cascade" }),
   period: text("period"),
+  category: text("category"),
   amountDue: numeric("amount_due", { precision: 10, scale: 2 }).notNull(),
   dueDate: date("due_date", { mode: "string" }),
 });
