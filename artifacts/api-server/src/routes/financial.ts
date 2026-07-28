@@ -1,6 +1,15 @@
 import { Router, type IRouter } from "express";
-import { db, financialMovementsTable, quotaPlansTable, quotasTable, paymentsTable, athletesTable, seasonsTable } from "@workspace/db";
+import { db, financialMovementsTable, quotaPlansTable, quotasTable, paymentsTable, athletesTable, seasonsTable, categoryRulesTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte } from "drizzle-orm";
+
+function computeCategory(birthDate: string, rules: Array<{ name: string; minAge: number; maxAge: number | null }>, refYear?: number): string | null {
+  const year = refYear ?? new Date().getFullYear();
+  const age = year - new Date(birthDate).getFullYear();
+  for (const rule of rules) {
+    if (age >= rule.minAge && (rule.maxAge == null || age <= rule.maxAge)) return rule.name;
+  }
+  return null;
+}
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import {
   CreateFinancialMovementBody, UpdateFinancialMovementBody, GetFinancialMovementParams, UpdateFinancialMovementParams, DeleteFinancialMovementParams, ListFinancialMovementsQueryParams,
@@ -130,20 +139,32 @@ router.delete("/quota-plans/:id", requireAdmin, async (req, res): Promise<void> 
 });
 
 // ── Quotas ────────────────────────────────────────────────────────────────────
-async function enrichQuota(quota: typeof quotasTable.$inferSelect) {
-  const athleteRow = await db.select({ name: athletesTable.name }).from(athletesTable).where(eq(athletesTable.id, quota.athleteId));
-  const seasonRow = await db.select({ name: seasonsTable.name }).from(seasonsTable).where(eq(seasonsTable.id, quota.seasonId));
+
+type CategoryRule = { name: string; minAge: number; maxAge: number | null };
+
+async function enrichQuota(
+  quota: typeof quotasTable.$inferSelect,
+  categoryRules: CategoryRule[],
+  athleteCache: Map<number, { name: string; birthDate: string }>,
+  seasonCache: Map<number, string>,
+) {
+  const athlete = athleteCache.get(quota.athleteId);
+  const athleteName = athlete?.name ?? null;
+  const athleteCategory = athlete?.birthDate
+    ? computeCategory(athlete.birthDate, categoryRules)
+    : null;
+  const seasonName = seasonCache.get(quota.seasonId) ?? null;
   const pmts = await db.select().from(paymentsTable).where(eq(paymentsTable.quotaId, quota.id));
   const amountDue = Number(quota.amountDue);
   const amountPaid = pmts.reduce((sum, p) => sum + Number(p.amount), 0);
   return {
     id: quota.id,
     athleteId: quota.athleteId,
-    athleteName: athleteRow[0]?.name ?? null,
+    athleteName,
     seasonId: quota.seasonId,
-    seasonName: seasonRow[0]?.name ?? null,
+    seasonName,
     period: quota.period,
-    category: quota.category,
+    category: athleteCategory ?? quota.category,
     amountDue,
     amountPaid,
     amountOwed: amountDue - amountPaid,
@@ -153,18 +174,26 @@ async function enrichQuota(quota: typeof quotasTable.$inferSelect) {
   };
 }
 
+async function loadCaches(athleteIds: number[], seasonIds: number[]) {
+  const [rules, athletes, seasons] = await Promise.all([
+    db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge),
+    athleteIds.length ? db.select({ id: athletesTable.id, name: athletesTable.name, birthDate: athletesTable.birthDate }).from(athletesTable) : Promise.resolve([]),
+    seasonIds.length ? db.select().from(seasonsTable) : Promise.resolve([]),
+  ]);
+  const athleteCache = new Map(athletes.map(a => [a.id, { name: a.name, birthDate: String(a.birthDate) }]));
+  const seasonCache = new Map(seasons.map(s => [s.id, s.name]));
+  return { rules, athleteCache, seasonCache };
+}
+
 router.get("/quotas", requireAdmin, async (req, res): Promise<void> => {
   const query = ListQuotasQueryParams.safeParse(req.query);
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
   let rows = await db.select().from(quotasTable);
   if (query.data.seasonId) rows = rows.filter(q => q.seasonId === Number(query.data.seasonId));
   if (query.data.athleteId) rows = rows.filter(q => q.athleteId === Number(query.data.athleteId));
-  const enriched = await Promise.all(rows.map(enrichQuota));
-  if (query.data.status) {
-    const filtered = enriched.filter(q => q.status === query.data.status);
-    res.json(filtered);
-    return;
-  }
+  const { rules, athleteCache, seasonCache } = await loadCaches(rows.map(r => r.athleteId), rows.map(r => r.seasonId));
+  const enriched = await Promise.all(rows.map(r => enrichQuota(r, rules, athleteCache, seasonCache)));
+  if (query.data.status) { res.json(enriched.filter(q => q.status === query.data.status)); return; }
   res.json(enriched);
 });
 
@@ -204,7 +233,8 @@ router.post("/quotas/generate", requireAdmin, async (req, res): Promise<void> =>
   }
 
   const created = await db.select().from(quotasTable).where(eq(quotasTable.seasonId, seasonId));
-  const enriched = await Promise.all(created.map(enrichQuota));
+  const { rules: cr, athleteCache: ac, seasonCache: sc } = await loadCaches(created.map(r => r.athleteId), created.map(r => r.seasonId));
+  const enriched = await Promise.all(created.map(r => enrichQuota(r, cr, ac, sc)));
   res.json(enriched);
 });
 
@@ -213,7 +243,8 @@ router.get("/quotas/:id", requireAdmin, async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const [quota] = await db.select().from(quotasTable).where(eq(quotasTable.id, params.data.id));
   if (!quota) { res.status(404).json({ error: "Quota não encontrada" }); return; }
-  res.json(await enrichQuota(quota));
+  const { rules, athleteCache, seasonCache } = await loadCaches([quota.athleteId], [quota.seasonId]);
+  res.json(await enrichQuota(quota, rules, athleteCache, seasonCache));
 });
 
 router.get("/quotas-overdue", requireAdmin, async (req, res): Promise<void> => {
@@ -222,7 +253,8 @@ router.get("/quotas-overdue", requireAdmin, async (req, res): Promise<void> => {
   let rows = await db.select().from(quotasTable);
   if (query.data.seasonId) rows = rows.filter(q => q.seasonId === Number(query.data.seasonId));
 
-  const enriched = await Promise.all(rows.map(enrichQuota));
+  const { rules, athleteCache, seasonCache } = await loadCaches(rows.map(r => r.athleteId), rows.map(r => r.seasonId));
+  const enriched = await Promise.all(rows.map(r => enrichQuota(r, rules, athleteCache, seasonCache)));
   const overdue = enriched.filter(q => q.status === "em_atraso" || q.status === "pendente" || q.status === "parcial");
 
   const athleteMap: Record<number, typeof enriched[0] & { quotas: any[] }> = {};
