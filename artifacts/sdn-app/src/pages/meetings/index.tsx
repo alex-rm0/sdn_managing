@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   Plus, Trash2, GripVertical, FileText, Users, Pencil, X,
   ClipboardList, Clock, Upload, Loader2, Search, ChevronDown, ChevronUp,
-  Play, CheckCircle, Calendar, Download,
+  Play, CheckCircle, Calendar, Download, ChevronLeft, AlertTriangle,
 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -636,6 +636,18 @@ export default function MeetingsList() {
     setEditOpen(true);
   };
 
+  const handleRevertToPrep = async () => {
+    if (!editTarget) return;
+    try {
+      await updateMutation.mutateAsync({ id: editTarget.id, data: { status: 'preparacao' } });
+      setEditOpen(false);
+      invalidate();
+      toast({ title: 'Reunião voltou a preparação', description: 'Podes retomar quando estiveres pronto.' });
+    } catch {
+      toast({ title: 'Erro', variant: 'destructive' });
+    }
+  };
+
   const handleSave = async (overrideStatus?: string) => {
     const payload = {
       date: editor.date,
@@ -703,6 +715,17 @@ export default function MeetingsList() {
   const isSaving = createMutation.isPending || updateMutation.isPending;
   const isEditingADeDecorrer = editTarget?.status === 'a_decorrer';
 
+  // Pending items across all meetings
+  const allPending = useMemo(() =>
+    meetings.flatMap(m =>
+      m.agendaItems
+        .filter(a => a.pending && a.text.trim())
+        .map(a => ({ text: a.text, meetingDate: m.date, meetingId: m.id }))
+    ),
+    [meetings]
+  );
+  const [pendingPanelOpen, setPendingPanelOpen] = useState(true);
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -724,6 +747,44 @@ export default function MeetingsList() {
             </Button>
           </div>
         </div>
+
+        {/* Pending items panel */}
+        {allPending.length > 0 && (
+          <div className="border rounded-lg overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-50 hover:bg-amber-100 transition-colors text-left"
+              onClick={() => setPendingPanelOpen(v => !v)}
+            >
+              <span className="flex items-center gap-2 text-sm font-medium text-amber-800">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                Assuntos pendentes
+                <span className="ml-1 bg-amber-200 text-amber-800 text-xs font-semibold rounded-full px-1.5 py-0">{allPending.length}</span>
+              </span>
+              {pendingPanelOpen
+                ? <ChevronUp className="w-4 h-4 text-amber-600 shrink-0" />
+                : <ChevronDown className="w-4 h-4 text-amber-600 shrink-0" />}
+            </button>
+            {pendingPanelOpen && (
+              <div className="divide-y divide-amber-100">
+                {allPending.map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-2.5 bg-white hover:bg-amber-50/40 transition-colors group">
+                    <Clock className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
+                    <span className="flex-1 text-sm">{item.text}</span>
+                    <button
+                      className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => {
+                        const m = meetings.find(x => x.id === item.meetingId);
+                        if (m) setViewMeeting(m);
+                      }}
+                    >
+                      {formatDateShort(item.meetingDate)}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Search */}
         <div className="space-y-2">
@@ -930,7 +991,7 @@ export default function MeetingsList() {
             </Button>
             <Button onClick={handleStartMeeting} disabled={isSaving || !prep.date} className="gap-2 bg-green-600 hover:bg-green-700">
               <Play className="w-3.5 h-3.5" />
-              {prepTarget?.status === 'preparacao' ? 'Iniciar reunião' : 'Abrir editor'}
+              {prepTarget?.status === 'a_decorrer' ? 'Continuar reunião' : 'Iniciar reunião'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -949,7 +1010,20 @@ export default function MeetingsList() {
             <MeetingEditor value={editor} onChange={setEditor} direcaoMembers={direcaoMembers} />
           </div>
           <DialogFooter className="shrink-0 border-t pt-4 flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setEditOpen(false)} className="mr-auto">Cancelar</Button>
+            <div className="flex gap-2 items-center mr-auto flex-wrap">
+              <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+              {isEditingADeDecorrer && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  disabled={isSaving}
+                  onClick={handleRevertToPrep}
+                >
+                  <ChevronLeft className="w-3 h-3" /> Voltar a preparação
+                </Button>
+              )}
+            </div>
             {isEditingADeDecorrer && (
               <Button
                 variant="outline"
