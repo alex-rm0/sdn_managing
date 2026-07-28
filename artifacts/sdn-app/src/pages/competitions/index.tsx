@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListCompetitions, useCreateCompetition, useUpdateCompetition, useDeleteCompetition, getListCompetitionsQueryKey,
@@ -18,7 +18,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Upload, Loader2 } from 'lucide-react';
+
+interface ImportRace {
+  name: string;
+  modality?: string;
+  distance?: string;
+  category?: string;
+}
+interface ImportComp {
+  name: string;
+  seasonId: number;
+  startDate: string;
+  endDate?: string;
+  location?: string;
+  organizer?: string;
+  races?: ImportRace[];
+}
 
 const compSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -134,6 +150,9 @@ export default function CompetitionsList() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Competition | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportComp[] | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
 
   const { data: competitions, isLoading } = useListCompetitions();
   const { data: seasons } = useListSeasons();
@@ -165,12 +184,77 @@ export default function CompetitionsList() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  const handleJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (jsonInputRef.current) jsonInputRef.current.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        const arr: ImportComp[] = Array.isArray(data) ? data : [data];
+        if (!arr.length || !arr[0].name) throw new Error('Formato inválido');
+        setImportPreview(arr);
+      } catch {
+        toast({ title: 'JSON inválido', description: 'O ficheiro não tem o formato esperado.', variant: 'destructive' });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportConfirm = async () => {
+    if (!importPreview) return;
+    setIsImporting(true);
+    let created = 0;
+    try {
+      for (const comp of importPreview) {
+        const { races, ...compData } = comp;
+        const newComp = await createMutation.mutateAsync({ data: {
+          name: compData.name,
+          seasonId: compData.seasonId,
+          startDate: compData.startDate,
+          endDate: compData.endDate ?? null,
+          location: compData.location ?? null,
+          organizer: compData.organizer ?? null,
+        }});
+        if (races?.length) {
+          for (const race of races) {
+            await createRaceMutation.mutateAsync({ data: {
+              name: race.name,
+              competitionId: (newComp as any).id,
+              modality: race.modality ?? null,
+              distance: race.distance ?? null,
+              category: race.category ?? null,
+            }});
+          }
+        }
+        created++;
+      }
+      queryClient.invalidateQueries({ queryKey: getListCompetitionsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: ['/api/races'] });
+      toast({ title: `${created} competição${created !== 1 ? 'ões' : ''} importada${created !== 1 ? 's' : ''}` });
+      setImportPreview(null);
+    } catch {
+      toast({ title: 'Erro durante importação', variant: 'destructive' });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">Competições</h1>
-          <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Nova Competição</Button>
+          <div className="flex gap-2">
+            <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleJsonFile} />
+            <Button variant="outline" size="sm" onClick={() => jsonInputRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-2" /> Importar JSON
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
+              <Plus className="w-4 h-4 mr-2" /> Nova Competição
+            </Button>
+          </div>
         </div>
         <div className="bg-card rounded-md border shadow-sm overflow-hidden">
           <Table>
@@ -253,6 +337,48 @@ export default function CompetitionsList() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── JSON import preview dialog ── */}
+      <Dialog open={!!importPreview} onOpenChange={v => !v && setImportPreview(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Confirmar importação</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3 py-1 pr-1">
+            {importPreview?.map((comp, i) => (
+              <div key={i} className="border rounded-lg p-3 space-y-1.5">
+                <p className="font-medium text-sm">{comp.name}</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                  <span>{comp.startDate}{comp.endDate ? ` → ${comp.endDate}` : ''}</span>
+                  {comp.location && <span>{comp.location}</span>}
+                  {comp.organizer && <span>{comp.organizer}</span>}
+                  <span>Época #{comp.seasonId}</span>
+                </div>
+                {comp.races && comp.races.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 pl-3 border-l-2 border-muted">
+                    {comp.races.map((r, j) => (
+                      <li key={j} className="text-xs text-muted-foreground">
+                        {r.name}
+                        {r.modality && <span className="ml-1 opacity-60">· {r.modality}</span>}
+                        {r.distance && <span className="ml-1 opacity-60">· {r.distance}</span>}
+                        {r.category && <span className="ml-1 opacity-60">· {r.category}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="shrink-0 border-t pt-4">
+            <Button variant="outline" onClick={() => setImportPreview(null)}>Cancelar</Button>
+            <Button onClick={handleImportConfirm} disabled={isImporting}>
+              {isImporting
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />A importar…</>
+                : `Importar ${importPreview?.length ?? 0} competição${(importPreview?.length ?? 0) !== 1 ? 'ões' : ''}`}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

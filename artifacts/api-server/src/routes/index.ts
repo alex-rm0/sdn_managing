@@ -15,6 +15,7 @@ import dashboardRouter from "./dashboard";
 import meetingsRouter from "./meetings";
 import meetingsParseRouter from "./meetings-parse";
 import teamRouter from "./team";
+import documentUploadRouter from "./document-upload";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(dashboardRouter);
 router.use(meetingsRouter);
 router.use(meetingsParseRouter);
 router.use(teamRouter);
+router.use(documentUploadRouter);
 
 export default router;

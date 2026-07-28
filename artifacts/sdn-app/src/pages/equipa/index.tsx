@@ -94,10 +94,14 @@ function MemberCard({
               {!member.active && <Badge variant="outline" className="text-[10px] text-muted-foreground">Inativo</Badge>}
             </div>
             {member.position && (
-              <p className="text-xs text-muted-foreground mt-0.5">{member.position}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {member.role === 'treinador' ? `Escalão: ${member.position}` : member.position}
+              </p>
             )}
             {member.portfolio && (
-              <p className="text-xs text-primary/70 mt-0.5">Pelouro: {member.portfolio}</p>
+              <p className="text-xs text-primary/70 mt-0.5">
+                {member.role === 'treinador' ? `Modalidade: ${member.portfolio}` : `Pelouro: ${member.portfolio}`}
+              </p>
             )}
           </div>
 
@@ -305,16 +309,34 @@ export default function EquipaPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {form.role === 'treinador' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Escalão</label>
+                  <Input placeholder="Sub-12, Juniores, Seniores…" value={form.position} onChange={e => set({ position: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modalidade</label>
+                  <Input placeholder="Canoagem, Remo, Vela…" value={form.portfolio} onChange={e => set({ portfolio: e.target.value })} />
+                </div>
+              </div>
+            ) : form.role === 'direcao' ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cargo</label>
+                  <Input placeholder="Presidente, Secretário…" value={form.position} onChange={e => set({ position: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pelouro</label>
+                  <Input placeholder="Desporto, Financeiro…" value={form.portfolio} onChange={e => set({ portfolio: e.target.value })} />
+                </div>
+              </div>
+            ) : (
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cargo</label>
-                <Input placeholder="Presidente, Secretário…" value={form.position} onChange={e => set({ position: e.target.value })} />
+                <Input placeholder="Responsável de secretaria, Monitor…" value={form.position} onChange={e => set({ position: e.target.value })} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pelouro</label>
-                <Input placeholder="Desporto, Financeiro…" value={form.portfolio} onChange={e => set({ portfolio: e.target.value })} />
-              </div>
-            </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notas</label>
               <Textarea placeholder="Observações…" value={form.notes} onChange={e => set({ notes: e.target.value })} rows={2} className="resize-none" />

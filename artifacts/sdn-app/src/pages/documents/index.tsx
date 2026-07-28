@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useListDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument, getListDocumentsQueryKey } from '@workspace/api-client-react';
 import type { Document } from '@workspace/api-client-react';
@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileText, Download } from 'lucide-react';
+import { Plus, FileText, Download, Upload, Loader2, X } from 'lucide-react';
 
 const schema = z.object({
   title: z.string().min(1, 'Título obrigatório'),
@@ -40,6 +40,8 @@ export default function DocumentsList() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Document | null>(null);
   const [activeTab, setActiveTab] = useState('arquivo');
+  const [isUploading, setIsUploading] = useState(false);
+  const filePickerRef = useRef<HTMLInputElement>(null);
 
   const { data: documents, isLoading } = useListDocuments();
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
@@ -75,6 +77,26 @@ export default function DocumentsList() {
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (filePickerRef.current) filePickerRef.current.value = '';
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const res = await fetch('/api/documents/upload', { method: 'POST', body });
+      if (!res.ok) throw new Error('Erro no upload');
+      const { url } = await res.json();
+      form.setValue('fileUrl', url);
+      toast({ title: 'Ficheiro carregado' });
+    } catch {
+      toast({ title: 'Erro ao carregar ficheiro', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const renderTable = (type: string) => {
     const filtered = documents?.filter(d => d.type === type) || [];
@@ -182,7 +204,40 @@ export default function DocumentsList() {
                   )} />
                 </>
               )}
-              <FormField control={form.control} name="fileUrl" render={({ field }) => (<FormItem><FormLabel>URL do Ficheiro</FormLabel><FormControl><Input placeholder="https://..." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="fileUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ficheiro</FormLabel>
+                  <div className="space-y-2">
+                    <input ref={filePickerRef} type="file" className="hidden" onChange={handleFileUpload}
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.png,.jpg,.jpeg" />
+                    <div className="flex gap-2 items-center">
+                      <Button type="button" variant="outline" size="sm" disabled={isUploading}
+                        onClick={() => filePickerRef.current?.click()}>
+                        {isUploading
+                          ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />A carregar…</>
+                          : <><Upload className="w-3.5 h-3.5 mr-1.5" />Escolher ficheiro</>}
+                      </Button>
+                      {field.value && (
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => form.setValue('fileUrl', '')}>
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    {field.value ? (
+                      <a href={field.value} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-primary hover:underline truncate max-w-xs">
+                        <FileText className="w-3 h-3 shrink-0" />
+                        {field.value.split('/').pop()}
+                      </a>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Nenhum ficheiro associado</p>
+                    )}
+                    <FormControl><Input type="hidden" {...field} value={field.value ?? ''} /></FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <FormField control={form.control} name="content" render={({ field }) => (<FormItem><FormLabel>Conteúdo / Descrição</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notas</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
               <DialogFooter>
