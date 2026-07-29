@@ -51,15 +51,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F4F6F8' }}>
+    <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#F4F6F8' }}>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="relative w-full" style={{ height: '56vh', minHeight: '320px', maxHeight: '520px' }}>
-        {/* Background photo — positioned to show rowing boats */}
+      <div className="relative w-full flex-1 min-h-0">
+        {/* Background photo — show full scene: city top + boats bottom */}
         <img
           src="/hero-coimbra.jpg"
           alt="Coimbra"
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 70%' }}
+          style={{ objectPosition: 'center 40%' }}
         />
         {/* Overlay */}
         <div
@@ -90,7 +90,7 @@ export default function Login() {
       </div>
 
       {/* ── Form area ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-6">
+      <div className="flex-shrink-0 flex flex-col items-center justify-center px-6 py-5" style={{ background: '#F4F6F8' }}>
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="w-full max-w-3xl"
@@ -188,7 +188,7 @@ export default function Login() {
 
         {/* Footer note */}
         <p
-          className="mt-10 text-xs font-semibold tracking-widest uppercase"
+          className="mt-4 text-xs font-semibold tracking-widest uppercase"
           style={{ color: '#9CA3AF' }}
         >
           Acesso restrito a membros da secção
