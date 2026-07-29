@@ -66,11 +66,6 @@ export default function Login() {
           className="absolute inset-0"
           style={{ background: 'rgba(11,30,61,0.50)' }}
         />
-        {/* Gradient fade into form background at the bottom */}
-        <div
-          className="absolute inset-x-0 bottom-0"
-          style={{ height: '18%', background: 'linear-gradient(to bottom, transparent, rgba(244,246,248,0.85))' }}
-        />
 
         {/* Logo + identity — sits above the fade zone */}
         <div className="absolute bottom-20 right-10 flex items-center gap-5">
