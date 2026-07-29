@@ -54,11 +54,12 @@ export default function Login() {
     <div className="min-h-screen flex flex-col" style={{ background: '#F4F6F8' }}>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <div className="relative w-full" style={{ height: '56vh', minHeight: '320px', maxHeight: '520px' }}>
-        {/* Background photo */}
+        {/* Background photo — positioned to show rowing boats */}
         <img
           src="/hero-coimbra.jpg"
           alt="Coimbra"
-          className="absolute inset-0 w-full h-full object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: 'center 70%' }}
         />
         {/* Overlay */}
         <div
@@ -67,11 +68,11 @@ export default function Login() {
         />
 
         {/* Logo + identity — bottom-right of hero */}
-        <div className="absolute bottom-8 right-8 flex items-center gap-4">
+        <div className="absolute bottom-8 right-10 flex items-center gap-5">
           <img
             src="/logo-sdn.png"
             alt="SDN"
-            className="w-16 h-16 rounded-xl object-contain bg-white p-1.5 shadow-lg"
+            className="w-16 h-16 rounded-xl object-contain bg-white p-1.5 shadow-lg flex-shrink-0"
           />
           <div className="text-right">
             <p className="text-white/70 text-xs font-semibold tracking-widest uppercase">SDN · AAC</p>
@@ -81,15 +82,15 @@ export default function Login() {
             >
               Plataforma de Gestão
             </p>
-            <h1 className="text-white text-xl font-bold leading-snug mt-1 max-w-xs text-right">
-              Secção de Desportos<br />Náuticos · AAC
+            <h1 className="text-white text-2xl font-bold leading-tight mt-1 whitespace-nowrap">
+              Secção de Desportos Náuticos · AAC
             </h1>
           </div>
         </div>
       </div>
 
       {/* ── Form area ─────────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-6">
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="w-full max-w-3xl"
@@ -160,7 +161,7 @@ export default function Login() {
           </div>
 
           {/* Secondary row */}
-          <div className="mt-5 flex items-center gap-6">
+          <div className="mt-5 flex items-center justify-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer select-none group">
               <input
                 type="checkbox"
