@@ -53,22 +53,27 @@ export default function Login() {
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#F4F6F8' }}>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <div className="relative w-full flex-1 min-h-0">
-        {/* Background photo — show full scene: city top + boats bottom */}
+      <div className="relative w-full flex-1 min-h-0 overflow-hidden">
+        {/* Background photo — show city top + boat bottom */}
         <img
           src="/hero-coimbra.jpg"
           alt="Coimbra"
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 40%' }}
+          style={{ objectPosition: 'center 55%' }}
         />
-        {/* Overlay */}
+        {/* Dark blue tint */}
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, rgba(11,30,61,0.55) 0%, rgba(11,30,61,0.72) 100%)' }}
+          style={{ background: 'rgba(11,30,61,0.50)' }}
+        />
+        {/* Gradient fade into form background at the bottom */}
+        <div
+          className="absolute inset-x-0 bottom-0"
+          style={{ height: '38%', background: 'linear-gradient(to bottom, transparent, #F4F6F8)' }}
         />
 
-        {/* Logo + identity — bottom-right of hero */}
-        <div className="absolute bottom-8 right-10 flex items-center gap-5">
+        {/* Logo + identity — sits above the fade zone */}
+        <div className="absolute bottom-20 right-10 flex items-center gap-5">
           <img
             src="/logo-sdn.png"
             alt="SDN"
@@ -90,7 +95,7 @@ export default function Login() {
       </div>
 
       {/* ── Form area ─────────────────────────────────────────────────────── */}
-      <div className="flex-shrink-0 flex flex-col items-center justify-center px-6 py-5" style={{ background: '#F4F6F8' }}>
+      <div className="flex-shrink-0 flex flex-col items-center justify-center px-6 py-4" style={{ background: '#F4F6F8' }}>
         <form
           onSubmit={handleSubmit(onSubmit)}
           className="w-full max-w-3xl"
