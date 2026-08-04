@@ -9,6 +9,13 @@ import { sessionMiddleware } from "./lib/session";
 
 const app: Express = express();
 
+// Railway (and most PaaS hosts) terminate TLS at an edge proxy and forward
+// plain HTTP to the container, so Express sees every request as insecure
+// unless it's told to trust the proxy's X-Forwarded-Proto header. Without
+// this, express-session silently drops the Set-Cookie header whenever the
+// cookie is configured with `secure: true` (i.e. in production).
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
