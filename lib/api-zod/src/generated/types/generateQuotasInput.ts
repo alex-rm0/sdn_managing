@@ -8,5 +8,5 @@
 
 export interface GenerateQuotasInput {
   seasonId: number;
-  quotaPlanId: number;
+  period?: string;
 }

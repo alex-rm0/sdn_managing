@@ -81,10 +81,10 @@ export default function UsersList() {
   }});
 
   const onCreateSubmit = (values: z.infer<typeof createSchema>) => {
-    createMutation.mutate({ data: { name: values.name, username: values.username, password: values.password, role: values.role, assignedCategories: values.assignedCategories ? values.assignedCategories.split(',').map(s => s.trim()).filter(Boolean) : [] } });
+    createMutation.mutate({ data: { name: values.name, username: values.username, password: values.password, role: values.role, assignedCategories: values.role === 'trainer' && values.assignedCategories ? values.assignedCategories.split(',').map(s => s.trim()).filter(Boolean) : [] } });
   };
   const onEditSubmit = (values: z.infer<typeof editSchema>) => {
-    updateMutation.mutate({ id: editing!.id, data: { name: values.name, username: values.username, password: values.password || null, role: values.role, active: values.active, assignedCategories: values.assignedCategories ? values.assignedCategories.split(',').map(s => s.trim()).filter(Boolean) : [] } });
+    updateMutation.mutate({ id: editing!.id, data: { name: values.name, username: values.username, password: values.password || null, role: values.role, active: values.active, assignedCategories: values.role === 'trainer' && values.assignedCategories ? values.assignedCategories.split(',').map(s => s.trim()).filter(Boolean) : [] } });
   };
 
   return (
@@ -180,7 +180,9 @@ export default function UsersList() {
                     </Select><FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={createForm.control} name="assignedCategories" render={({ field }) => (<FormItem><FormLabel>Categorias (separadas por vírgula)</FormLabel><FormControl><Input placeholder="Sénior, Sub-23" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                {createForm.watch('role') === 'trainer' && (
+                  <FormField control={createForm.control} name="assignedCategories" render={({ field }) => (<FormItem><FormLabel>Categorias (separadas por vírgula)</FormLabel><FormControl><Input placeholder="Sénior, Sub-23" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                )}
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                   <Button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'A criar...' : 'Criar'}</Button>
@@ -204,7 +206,9 @@ export default function UsersList() {
                 <FormField control={editForm.control} name="active" render={({ field }) => (
                   <FormItem className="flex items-center gap-3"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel className="!mt-0">Utilizador ativo</FormLabel></FormItem>
                 )} />
-                <FormField control={editForm.control} name="assignedCategories" render={({ field }) => (<FormItem><FormLabel>Categorias (separadas por vírgula)</FormLabel><FormControl><Input placeholder="Sénior, Sub-23" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                {editForm.watch('role') === 'trainer' && (
+                  <FormField control={editForm.control} name="assignedCategories" render={({ field }) => (<FormItem><FormLabel>Categorias (separadas por vírgula)</FormLabel><FormControl><Input placeholder="Sénior, Sub-23" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                )}
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                   <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'A guardar...' : 'Guardar'}</Button>

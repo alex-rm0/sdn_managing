@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListResults, useCreateResult, useUpdateResult, useDeleteResult, getListResultsQueryKey,
-  useListSeasons, useListCompetitions, useListRaces, createResult,
+  useListSeasons, useListCompetitions, useListRaces, createResult, createRace,
 } from '@workspace/api-client-react';
 import type { Result } from '@workspace/api-client-react';
 import { useForm } from 'react-hook-form';
@@ -36,8 +36,13 @@ function JsonFormatHint({ example }: { example: string }) {
 }
 
 // ── CRUD form schema ──────────────────────────────────────────────────────────
+// Results are entered against a competition + a free-text race name — the race
+// itself is looked up (or created on the spot) rather than picked from a
+// pre-populated list, since real competition calendars never define races
+// ahead of time; they only exist as rows in a results sheet.
 const schema = z.object({
-  raceId: z.coerce.number().min(1, 'Prova obrigatória'),
+  competitionId: z.coerce.number().min(1, 'Competição obrigatória'),
+  raceName: z.string().min(1, 'Nome da prova obrigatório'),
   athleteNames: z.string().nullable().optional(),
   boatClass: z.string().nullable().optional(),
   escalao: z.string().nullable().optional(),
@@ -48,7 +53,8 @@ const schema = z.object({
 });
 
 const defaultValues = {
-  raceId: 0,
+  competitionId: 0,
+  raceName: '',
   athleteNames: '',
   boatClass: '',
   escalao: '',
@@ -87,14 +93,13 @@ type RowResult = {
 
 const IMPORT_EXAMPLE = JSON.stringify([
   {
-    atletas: ["João Silva", "Pedro Costa"],
+    atletas: ["Alexandre Magalhães", "André Fonseca Ramos"],
     classe: "2x",
-    escalao: "Júnior",
-    epoca: "2024/2025",
-    competicao: "Campeonato Nacional",
-    prova: "2000m Final",
-    posicao: 1,
-    tempo: "6:45.32",
+    escalao: "Sénior",
+    competicao: "Campeonato Nacional de Velocidade",
+    prova: "2x Seniores Masculinos 2000m",
+    posicao: 5,
+    tempo: "6:49.715",
   },
   {
     atletas: "Ana Ferreira",
@@ -140,6 +145,10 @@ export default function ResultsList() {
   const { data: seasons } = useListSeasons();
   const { data: competitions } = useListCompetitions({ seasonId: seasonFilter ? parseInt(seasonFilter) : undefined });
   const { data: races } = useListRaces({ competitionId: compFilter ? parseInt(compFilter) : undefined });
+  // Unfiltered — used to resolve/create races during JSON import, independent
+  // of whatever season/competition filter is currently applied to the list.
+  const { data: allCompetitions } = useListCompetitions();
+  const { data: allRaces } = useListRaces();
 
   const victories = results?.filter(r => r.position === 1).length ?? 0;
   const podiums = results?.filter(r => r.position && r.position <= 3).length ?? 0;
@@ -157,12 +166,19 @@ export default function ResultsList() {
   }, [results, searchTerm]);
 
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
+  const formCompetitionId = form.watch('competitionId');
+  const { data: formRaces } = useListRaces({ competitionId: formCompetitionId || undefined });
+  const [resolvingRace, setResolvingRace] = useState(false);
 
   useEffect(() => {
     if (open) {
       if (editing) {
+        // Editing never changes which race a result belongs to (the update
+        // endpoint doesn't accept raceId) — these two values are just dummy
+        // placeholders to satisfy the schema; the fields render as read-only.
         form.reset({
-          raceId: editing.raceId,
+          competitionId: 1,
+          raceName: editing.raceName || 'x',
           athleteNames: editing.athleteNames ?? '',
           boatClass: editing.boatClass ?? '',
           escalao: editing.escalao ?? '',
@@ -190,9 +206,8 @@ export default function ResultsList() {
     onError: () => toast({ title: 'Erro ao eliminar', variant: 'destructive' }),
   }});
 
-  const onSubmit = (values: z.infer<typeof schema>) => {
-    const data = {
-      raceId: values.raceId,
+  const onSubmit = async (values: z.infer<typeof schema>) => {
+    const resultFields = {
       athleteNames: values.athleteNames || null,
       boatClass: values.boatClass || null,
       escalao: values.escalao || null,
@@ -201,8 +216,24 @@ export default function ResultsList() {
       points: values.points || null,
       notes: values.notes || null,
     };
-    if (editing) updateMutation.mutate({ id: editing.id, data });
-    else createMutation.mutate({ data });
+    if (editing) {
+      updateMutation.mutate({ id: editing.id, data: resultFields });
+      return;
+    }
+    setResolvingRace(true);
+    try {
+      const raceNameTrimmed = values.raceName.trim();
+      const existing = formRaces?.find(r => r.name.trim().toLowerCase() === raceNameTrimmed.toLowerCase());
+      const raceId = existing?.id ?? (await createRace({
+        name: raceNameTrimmed, competitionId: values.competitionId,
+        modality: null, distance: null, category: null,
+      })).id;
+      createMutation.mutate({ data: { raceId, ...resultFields } });
+    } catch {
+      toast({ title: 'Erro ao preparar a prova', variant: 'destructive' });
+    } finally {
+      setResolvingRace(false);
+    }
   };
 
   // ── Import helpers ────────────────────────────────────────────────────────
@@ -260,16 +291,33 @@ export default function ResultsList() {
         const athleteNamesStr = Array.isArray(p.atletas)
           ? p.atletas.join(', ')
           : p.atletas ?? null;
-        // Try to find raceId from name if not provided
+        // Resolve raceId: explicit id wins; otherwise match (or create) a race
+        // by name, scoped to the competition when one is given. Competition
+        // calendars never come with races pre-defined, so creating on the fly
+        // here is the norm, not a fallback.
         let raceId = p.raceId;
-        if (!raceId && p.prova && races) {
-          const match = races.find(r =>
-            r.name.toLowerCase().includes(p.prova!.toLowerCase()) ||
-            p.prova!.toLowerCase().includes(r.name.toLowerCase())
-          );
-          raceId = match?.id;
+        if (!raceId) {
+          if (!p.prova) throw new Error('Indique "raceId" ou "prova" (nome da prova).');
+          let competitionId: number | undefined;
+          if (p.competicao) {
+            const compMatch = allCompetitions?.find(c =>
+              c.name.toLowerCase().includes(p.competicao!.toLowerCase()) ||
+              p.competicao!.toLowerCase().includes(c.name.toLowerCase())
+            );
+            if (!compMatch) throw new Error(`Competição "${p.competicao}" não encontrada.`);
+            competitionId = compMatch.id;
+          }
+          const pool = competitionId ? (allRaces ?? []).filter(r => r.competitionId === competitionId) : (allRaces ?? []);
+          const raceMatch = pool.find(r => r.name.trim().toLowerCase() === p.prova!.trim().toLowerCase());
+          if (raceMatch) {
+            raceId = raceMatch.id;
+          } else if (competitionId) {
+            const newRace = await createRace({ name: p.prova.trim(), competitionId, modality: null, distance: null, category: null });
+            raceId = newRace.id;
+          } else {
+            throw new Error(`Prova "${p.prova}" não encontrada — indique também "competicao" para a criar.`);
+          }
         }
-        if (!raceId) throw new Error('raceId não encontrado (forneça o campo raceId ou nome de prova correspondente)');
         await createResult({
           raceId,
           athleteNames: athleteNamesStr,
@@ -297,7 +345,7 @@ export default function ResultsList() {
   const invalidCount = importRows.filter(r => !r.valid).length;
   const okCount = importRows.filter(r => r.importStatus === 'ok').length;
   const errCount = importRows.filter(r => r.importStatus === 'error').length;
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = createMutation.isPending || updateMutation.isPending || resolvingRace;
 
   return (
     <>
@@ -412,24 +460,42 @@ export default function ResultsList() {
           <DialogHeader><DialogTitle>{editing ? 'Editar Resultado' : 'Novo Resultado'}</DialogTitle></DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField control={form.control} name="raceId" render={({ field }) => (
-                <FormItem><FormLabel>Prova *</FormLabel>
-                  <Select onValueChange={v => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ''} disabled={!!editing}>
-                    <FormControl>
-                      <SelectTrigger className="[&>span]:truncate [&>span]:block">
-                        <SelectValue placeholder="Selecionar prova" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {races?.map(r => (
-                        <SelectItem key={r.id} value={String(r.id)}>
-                          {r.name}{r.competitionName ? ` — ${r.competitionName}` : ''}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select><FormMessage />
+              {editing ? (
+                <FormItem>
+                  <FormLabel>Competição / Prova</FormLabel>
+                  <Input disabled value={`${editing.competitionName ?? '—'} — ${editing.raceName ?? '—'}`} />
                 </FormItem>
-              )} />
+              ) : (
+                <>
+                  <FormField control={form.control} name="competitionId" render={({ field }) => (
+                    <FormItem><FormLabel>Competição *</FormLabel>
+                      <Select onValueChange={v => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ''}>
+                        <FormControl>
+                          <SelectTrigger className="[&>span]:truncate [&>span]:block">
+                            <SelectValue placeholder="Selecionar competição" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {competitions?.map(c => (
+                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select><FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="raceName" render={({ field }) => (
+                    <FormItem><FormLabel>Nome da prova *</FormLabel>
+                      <FormControl><Input placeholder="2x Sub19 Masculinos 2000m" {...field} /></FormControl>
+                      {!!formCompetitionId && !!formRaces?.length && (
+                        <p className="text-xs text-muted-foreground">
+                          Já registadas nesta competição: {formRaces.map(r => r.name).join(', ')}
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </>
+              )}
               <FormField control={form.control} name="athleteNames" render={({ field }) => (
                 <FormItem><FormLabel>Atletas</FormLabel><FormControl><Input placeholder="João Silva, Ana Costa" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -470,7 +536,7 @@ export default function ResultsList() {
           <DialogHeader>
             <DialogTitle>Importar Resultados via JSON</DialogTitle>
             <DialogDescription>
-              Cole um array JSON com os resultados. Campos obrigatórios: <code className="text-xs bg-muted px-1 rounded">atletas</code>, <code className="text-xs bg-muted px-1 rounded">classe</code>, <code className="text-xs bg-muted px-1 rounded">escalao</code>, <code className="text-xs bg-muted px-1 rounded">raceId</code> (ou nome de prova em <code className="text-xs bg-muted px-1 rounded">prova</code> para correspondência automática).
+              Cole um array JSON com os resultados. Campos obrigatórios: <code className="text-xs bg-muted px-1 rounded">atletas</code>, <code className="text-xs bg-muted px-1 rounded">classe</code>, <code className="text-xs bg-muted px-1 rounded">escalao</code>, e <code className="text-xs bg-muted px-1 rounded">competicao</code> + <code className="text-xs bg-muted px-1 rounded">prova</code> (a prova é criada automaticamente se ainda não existir).
             </DialogDescription>
           </DialogHeader>
 
@@ -495,7 +561,8 @@ export default function ResultsList() {
                 <div className="text-xs text-muted-foreground space-y-1">
                   <p><strong>atletas</strong>: string ou array — <code className="bg-muted px-1 rounded">"João Silva"</code> ou <code className="bg-muted px-1 rounded">["João", "Pedro"]</code></p>
                   <p><strong>classe</strong>: classe do barco (ex: <code className="bg-muted px-1 rounded">1x</code>, <code className="bg-muted px-1 rounded">2x</code>, <code className="bg-muted px-1 rounded">4+</code>, <code className="bg-muted px-1 rounded">8+</code>)</p>
-                  <p><strong>raceId</strong>: ID da prova (ver em Competições), ou use <strong>prova</strong> para correspondência por nome</p>
+                  <p><strong>competicao</strong> + <strong>prova</strong>: nome da competição e da prova — se a prova ainda não existir nessa competição, é criada automaticamente</p>
+                  <p><strong>raceId</strong>: alternativa direta ao par competicao/prova, se já souberes o ID da prova</p>
                 </div>
               </div>
             )}

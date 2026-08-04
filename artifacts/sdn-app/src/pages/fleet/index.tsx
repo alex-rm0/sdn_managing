@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListFleet, useCreateFleetItem, useUpdateFleetItem, useDeleteFleetItem,
-  useAddFleetValuation, getListFleetQueryKey, createFleetItem,
+  useAddFleetValuation, getListFleetQueryKey, createFleetItem, addFleetValuation,
 } from '@workspace/api-client-react';
 import type { FleetItem } from '@workspace/api-client-react';
 import { useForm } from 'react-hook-form';
@@ -76,20 +76,21 @@ const importRowSchema = z.object({
   estado: z.enum(['ativo', 'manutencao', 'avariado', 'fora_servico']).optional().default('ativo'),
   descricao_avaria: z.string().optional(),
   materiais_reparacao: z.string().optional(),
+  valor: z.coerce.number().optional(),
 });
 type ImportRow = z.infer<typeof importRowSchema>;
 type RowResult = { index: number; raw: unknown; parsed?: ImportRow; valid: boolean; validationError?: string; importStatus: 'pending' | 'ok' | 'error'; importError?: string; };
 type ImportStatus = 'idle' | 'previewing' | 'importing' | 'done';
 
 const BOAT_FORMAT = JSON.stringify([
-  { identificador: "AAC-001", tipo: "barco_remo", subtipo: "1x", marca: "Filippi", ano: 2018, estado: "ativo" },
-  { identificador: "AAC-002", tipo: "barco_motor", marca: "Honda", ano: 2010, estado: "manutencao" },
+  { identificador: "AAC-001", tipo: "barco_remo", subtipo: "1x", marca: "Filippi", ano: 2018, estado: "ativo", valor: 12000 },
+  { identificador: "AAC-002", tipo: "barco_motor", marca: "Honda", ano: 2010, estado: "manutencao", valor: 4500 },
 ], null, 2);
 
 const VEHICLE_FORMAT = JSON.stringify([
-  { identificador: "VH-001", tipo: "carrinha", marca: "Mercedes Sprinter", ano: 2015, estado: "ativo" },
-  { identificador: "VH-002", tipo: "atrelado", marca: "Metzler", ano: 2008, estado: "ativo" },
-  { identificador: "VH-003", tipo: "bicicleta", marca: "Trek", ano: 2020, estado: "ativo" },
+  { identificador: "VH-001", tipo: "carrinha", marca: "Mercedes Sprinter", ano: 2015, estado: "ativo", valor: 18000 },
+  { identificador: "VH-002", tipo: "atrelado", marca: "Metzler", ano: 2008, estado: "ativo", valor: 2500 },
+  { identificador: "VH-003", tipo: "bicicleta", marca: "Trek", ano: 2020, estado: "ativo", valor: 800 },
 ], null, 2);
 
 // ── JsonFormatHint ────────────────────────────────────────────────────────────
@@ -215,7 +216,10 @@ export default function FleetList({ category }: FleetListProps) {
       const idx = updated.findIndex(r => r.index === row.index);
       try {
         const p = row.parsed!;
-        await createFleetItem({ identifier: p.identificador, type: p.tipo, subtype: p.subtipo ?? null, brand: p.marca ?? null, year: p.ano ?? null, status: p.estado ?? 'ativo', breakdownDescription: p.descricao_avaria ?? null, repairMaterials: p.materiais_reparacao ?? null });
+        const newItem = await createFleetItem({ identifier: p.identificador, type: p.tipo, subtype: p.subtipo ?? null, brand: p.marca ?? null, year: p.ano ?? null, status: p.estado ?? 'ativo', breakdownDescription: p.descricao_avaria ?? null, repairMaterials: p.materiais_reparacao ?? null });
+        if (p.valor != null) {
+          await addFleetValuation(newItem.id, { value: p.valor, date: new Date().toISOString().split('T')[0], notes: 'Valor inicial (importação)' });
+        }
         updated[idx] = { ...updated[idx], importStatus: 'ok' };
       } catch (err) {
         updated[idx] = { ...updated[idx], importStatus: 'error', importError: err instanceof Error ? err.message : 'Erro' };
@@ -431,11 +435,13 @@ export default function FleetList({ category }: FleetListProps) {
                     <p><strong>tipo</strong>: <code className="bg-muted px-1 rounded">barco_remo</code> | <code className="bg-muted px-1 rounded">barco_motor</code></p>
                     <p><strong>estado</strong>: <code className="bg-muted px-1 rounded">ativo</code> | <code className="bg-muted px-1 rounded">manutencao</code> | <code className="bg-muted px-1 rounded">avariado</code> | <code className="bg-muted px-1 rounded">fora_servico</code></p>
                     <p><strong>subtipo</strong>: classe do barco (ex: <code className="bg-muted px-1 rounded">1x</code>, <code className="bg-muted px-1 rounded">2x</code>, <code className="bg-muted px-1 rounded">4+</code>, <code className="bg-muted px-1 rounded">8+</code>)</p>
+                    <p><strong>valor</strong>: opcional — valor de compra/avaliação inicial em euros (fica registado no histórico de avaliações)</p>
                   </div>
                 ) : (
                   <div className="text-xs text-muted-foreground space-y-0.5">
                     <p><strong>tipo</strong>: <code className="bg-muted px-1 rounded">carrinha</code> | <code className="bg-muted px-1 rounded">atrelado</code> | <code className="bg-muted px-1 rounded">bicicleta</code></p>
                     <p><strong>estado</strong>: <code className="bg-muted px-1 rounded">ativo</code> | <code className="bg-muted px-1 rounded">manutencao</code> | <code className="bg-muted px-1 rounded">avariado</code> | <code className="bg-muted px-1 rounded">fora_servico</code></p>
+                    <p><strong>valor</strong>: opcional — valor de compra/avaliação inicial em euros (fica registado no histórico de avaliações)</p>
                   </div>
                 )}
               </div>
@@ -460,6 +466,7 @@ export default function FleetList({ category }: FleetListProps) {
                         {isBoat && <TableHead>Classe</TableHead>}
                         <TableHead>Marca / Ano</TableHead>
                         <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
                         <TableHead className="w-8 text-center">✓</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -474,6 +481,7 @@ export default function FleetList({ category }: FleetListProps) {
                             {isBoat && <TableCell className="text-xs">{row.valid ? (row.parsed!.subtipo ?? '—') : String(raw?.subtipo ?? '—')}</TableCell>}
                             <TableCell className="text-xs">{row.valid ? `${row.parsed!.marca ?? '—'}${row.parsed!.ano ? ` / ${row.parsed!.ano}` : ''}` : '—'}</TableCell>
                             <TableCell className="text-xs">{row.valid ? statusLabels[row.parsed!.estado ?? 'ativo'] : '—'}</TableCell>
+                            <TableCell className="text-xs text-right">{row.valid && row.parsed!.valor != null ? `${row.parsed!.valor.toLocaleString('pt-PT')} €` : '—'}</TableCell>
                             <TableCell className="text-center">
                               {!row.valid ? <span title={row.validationError}><XCircle className="w-4 h-4 text-destructive inline" /></span>
                                 : row.importStatus === 'pending' ? <span className="w-4 h-4 rounded-full bg-muted inline-block" />

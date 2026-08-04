@@ -316,7 +316,7 @@ export default function EquipaPage() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Modalidade</label>
-                  <Input placeholder="Canoagem, Remo, Vela…" value={form.portfolio} onChange={e => set({ portfolio: e.target.value })} />
+                  <Input placeholder="Remo Olímpico, Remo Indoor, Remo de Mar…" value={form.portfolio} onChange={e => set({ portfolio: e.target.value })} />
                 </div>
               </div>
             ) : form.role === 'direcao' ? (

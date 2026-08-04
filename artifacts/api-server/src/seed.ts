@@ -275,12 +275,12 @@ async function seed() {
 
   // Competitions
   const [comp] = await db.insert(competitionsTable).values({
-    name: "Campeonato Nacional de Canoagem 2025",
+    name: "Campeonato Nacional de Velocidade 2025",
     location: "Coimbra — Mondego",
     startDate: "2025-06-14",
     endDate: "2025-06-15",
     seasonId: prevSeason.id,
-    organizer: "FPCanoagem",
+    organizer: "FPR",
   }).returning();
 
   const [race1] = await db.insert(racesTable).values({

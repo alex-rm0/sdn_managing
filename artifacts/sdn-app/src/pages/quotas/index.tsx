@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListQuotas, useCreatePayment, useListSeasons, useListQuotaPlans, useGenerateQuotas,
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check, ChevronsUpDown, ChevronLeft, ChevronRight, Search, Zap, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -139,8 +139,6 @@ export default function QuotasList() {
   // ── Dialogs ───────────────────────────────────────────────────────────────
   const [payOpen, setPayOpen] = useState(false);
   const [selectedQuota, setSelectedQuota] = useState<Quota | null>(null);
-  const [genOpen, setGenOpen] = useState(false);
-  const [genPlanId, setGenPlanId] = useState('');
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data: seasons = [] } = useListSeasons();
@@ -289,20 +287,21 @@ export default function QuotasList() {
     );
   };
 
-  const handleGenerate = () => {
-    if (!seasonId || !genPlanId) return;
+  // Quotas para o mês em vista aparecem sozinhas — assim que uma época+mês
+  // ainda não tem quotas (e já há planos definidos), geram-se em segundo
+  // plano, sem o utilizador ter de pedir nada.
+  const autoGenAttempted = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!seasonId || isLoading || seasonPlans.length === 0) return;
+    if (monthQuotas.length > 0) return;
+    const key = `${seasonId}:${currentPeriod}`;
+    if (autoGenAttempted.current.has(key)) return;
+    autoGenAttempted.current.add(key);
     generateMutation.mutate(
-      { data: { seasonId: +seasonId, quotaPlanId: +genPlanId, period: currentPeriod } },
-      {
-        onSuccess: (data: any) => {
-          invalidate();
-          toast({ title: `${data.length ?? 0} quotas geradas`, description: `${MONTHS_PT[month - 1]} ${year}` });
-          setGenOpen(false);
-        },
-        onError: () => toast({ title: 'Erro ao gerar quotas', variant: 'destructive' }),
-      }
+      { data: { seasonId: +seasonId, period: currentPeriod } },
+      { onSuccess: () => invalidate(), onError: () => autoGenAttempted.current.delete(key) },
     );
-  };
+  }, [seasonId, currentPeriod, isLoading, monthQuotas.length, seasonPlans.length]);
 
   const filterTabs = [
     { key: 'all',      label: 'Todas',      count: monthSummary.total },
@@ -354,7 +353,7 @@ export default function QuotasList() {
           </div>
         )}
 
-        {/* ── Month navigation + Gerar ── */}
+        {/* ── Month navigation ── */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1 border rounded-md overflow-hidden">
             <button className="px-2 py-1.5 hover:bg-muted transition-colors" onClick={prevMonth}>
@@ -367,10 +366,10 @@ export default function QuotasList() {
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          {seasonId && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setGenOpen(true)}>
-              <Zap className="w-3.5 h-3.5" /> Gerar quotas
-            </Button>
+          {generateMutation.isPending && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> A preparar quotas do mês…
+            </span>
           )}
         </div>
 
@@ -421,16 +420,15 @@ export default function QuotasList() {
               <p className="text-center py-10 text-sm text-muted-foreground">Seleciona uma época para ver as quotas</p>
             ) : filteredMonthQuotas.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-sm text-muted-foreground mb-3">
-                  {monthQuotas.length === 0
-                    ? `Ainda não há quotas geradas para ${MONTHS_PT[month - 1]} ${year}`
-                    : 'Nenhuma quota corresponde ao filtro'}
+                <p className="text-sm text-muted-foreground">
+                  {monthQuotas.length > 0
+                    ? 'Nenhuma quota corresponde ao filtro'
+                    : seasonPlans.length === 0
+                      ? 'Não há planos de quotas definidos para esta época — cria um na página Financeiro.'
+                      : generateMutation.isPending
+                        ? 'A preparar as quotas do mês…'
+                        : 'Sem atletas a faturar neste mês (nenhum escalão ativo corresponde aos planos definidos).'}
                 </p>
-                {monthQuotas.length === 0 && (
-                  <Button variant="outline" size="sm" onClick={() => setGenOpen(true)}>
-                    <Zap className="w-3.5 h-3.5 mr-1.5" /> Gerar quotas do mês
-                  </Button>
-                )}
               </div>
             ) : (
               <div className="border rounded-lg overflow-hidden">
@@ -510,10 +508,11 @@ export default function QuotasList() {
               <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : matrixGrouped.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-sm text-muted-foreground mb-3">Sem quotas geradas para esta época</p>
-                <Button variant="outline" size="sm" onClick={() => setGenOpen(true)}>
-                  <Zap className="w-3.5 h-3.5 mr-1.5" /> Gerar quotas do mês
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  {seasonPlans.length === 0
+                    ? 'Não há planos de quotas definidos para esta época — cria um na página Financeiro.'
+                    : 'Ainda sem quotas para esta época — visita a vista "Por mês" para as gerar.'}
+                </p>
               </div>
             ) : (
               <>
@@ -591,47 +590,6 @@ export default function QuotasList() {
           </div>
         )}
       </div>
-
-      {/* ── Generate quotas dialog ── */}
-      <Dialog open={genOpen} onOpenChange={setGenOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              Gerar quotas — {MONTHS_PT[month - 1]} {year}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-1">
-            <p className="text-sm text-muted-foreground">
-              Cria uma quota para <strong>todos os atletas ativos</strong> com o valor do plano selecionado.
-              Atletas que já tenham quota para este mês são ignorados.
-            </p>
-            {seasonPlans.length === 0 ? (
-              <p className="text-sm text-destructive">Não há planos de quotas para esta época. Cria um primeiro na página Financeiro.</p>
-            ) : (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Plano de quotas</label>
-                <Select value={genPlanId} onValueChange={setGenPlanId}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar plano…" /></SelectTrigger>
-                  <SelectContent>
-                    {seasonPlans.map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.category} — {fmt(p.amount)} ({p.periodicity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGenOpen(false)}>Cancelar</Button>
-            <Button onClick={handleGenerate} disabled={!genPlanId || generateMutation.isPending}>
-              {generateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />A gerar…</> : 'Gerar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── Payment dialog ── */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>

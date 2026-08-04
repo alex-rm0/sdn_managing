@@ -2982,12 +2982,12 @@ components:
 
     GenerateQuotasInput:
       type: object
-      required: [seasonId, quotaPlanId]
+      required: [seasonId]
       properties:
         seasonId:
           type: integer
-        quotaPlanId:
-          type: integer
+        period:
+          type: string
 
     AthleteQuotaSummary:
       type: object

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  useListCompetitions, useCreateCompetition, useUpdateCompetition, useDeleteCompetition, getListCompetitionsQueryKey,
+  useListCompetitions, useCreateCompetition, useUpdateCompetition, useDeleteCompetition, getListCompetitionsQueryKey, createCompetition,
   useListRaces, useCreateRace, useUpdateRace, useDeleteRace, createRace,
   useListSeasons,
 } from '@workspace/api-client-react';
@@ -14,27 +14,62 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ChevronDown, ChevronRight, Upload, Loader2, Search } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Plus, ChevronDown, ChevronRight, Upload, Loader2, Search, CheckCircle, XCircle } from 'lucide-react';
 
-interface ImportRace {
-  name: string;
-  modality?: string;
-  distance?: string;
-  category?: string;
+// ── JSON format hint ──────────────────────────────────────────────────────────
+function JsonFormatHint({ example }: { example: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-xs">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+        {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+        Ver formato JSON
+      </button>
+      {open && <pre className="mt-2 p-3 bg-muted rounded-md text-xs overflow-x-auto whitespace-pre-wrap max-h-48 overflow-y-auto">{example}</pre>}
+    </div>
+  );
 }
-interface ImportComp {
-  name: string;
-  seasonId: number;
-  startDate: string;
-  endDate?: string;
-  location?: string;
-  organizer?: string;
-  races?: ImportRace[];
-}
+
+// ── Import schema ─────────────────────────────────────────────────────────────
+const importRaceRowSchema = z.object({
+  name: z.string().min(1),
+  modality: z.string().optional(),
+  distance: z.string().optional(),
+  category: z.string().optional(),
+});
+const importCompRowSchema = z.object({
+  name: z.string().min(1),
+  seasonId: z.coerce.number().min(1),
+  startDate: z.string().min(1),
+  endDate: z.string().optional(),
+  location: z.string().optional(),
+  organizer: z.string().optional(),
+  races: z.array(importRaceRowSchema).optional().default([]),
+});
+type ImportCompRow = z.infer<typeof importCompRowSchema>;
+type ImportStatus = 'idle' | 'previewing' | 'importing' | 'done';
+type RowResult = {
+  index: number; raw: unknown; parsed?: ImportCompRow; valid: boolean;
+  validationError?: string; importStatus: 'pending' | 'ok' | 'error'; importError?: string;
+};
+
+const IMPORT_EXAMPLE = JSON.stringify([
+  {
+    name: "Campeonato Nacional de Velocidade",
+    seasonId: 1,
+    startDate: "2026-07-03",
+    endDate: "2026-07-05",
+    location: "Montemor-o-Velho",
+    organizer: "FPR",
+    races: [],
+  },
+], null, 2);
 
 const compSchema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -51,6 +86,18 @@ const raceSchema = z.object({
   distance: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
 });
+
+// ── Date display ──────────────────────────────────────────────────────────────
+// Portuguese dd/mm/aaaa; single-day competitions show one date, multi-day show
+// a compact range (collapsing month/year when they're shared by both ends).
+function formatCompetitionDates(startDate: string, endDate?: string | null): string {
+  const [sy, sm, sd] = startDate.split('-');
+  if (!endDate || endDate === startDate) return `${sd}/${sm}/${sy}`;
+  const [ey, em, ed] = endDate.split('-');
+  if (sy === ey && sm === em) return `${sd}–${ed}/${sm}/${sy}`;
+  if (sy === ey) return `${sd}/${sm} – ${ed}/${em}/${sy}`;
+  return `${sd}/${sm}/${sy} – ${ed}/${em}/${ey}`;
+}
 
 // Sub-component to show races for a competition
 function CompetitionRaces({ competitionId, competitionName }: { competitionId: number; competitionName: string }) {
@@ -126,9 +173,9 @@ function CompetitionRaces({ competitionId, competitionName }: { competitionId: n
           <DialogHeader><DialogTitle>{editingRace ? 'Editar Prova' : 'Nova Prova'}</DialogTitle></DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nome *</FormLabel><FormControl><Input placeholder="K1 1000m Sénior M" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nome *</FormLabel><FormControl><Input placeholder="1x 1000m Sénior M" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="modality" render={({ field }) => (<FormItem><FormLabel>Modalidade</FormLabel><FormControl><Input placeholder="Canoagem" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="modality" render={({ field }) => (<FormItem><FormLabel>Modalidade</FormLabel><FormControl><Input placeholder="Remo Indoor" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="distance" render={({ field }) => (<FormItem><FormLabel>Distância</FormLabel><FormControl><Input placeholder="1000m" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
               </div>
               <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Categoria</FormLabel><FormControl><Input placeholder="Sénior M" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
@@ -150,9 +197,13 @@ export default function CompetitionsList() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Competition | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [importPreview, setImportPreview] = useState<ImportComp[] | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const jsonInputRef = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importParseError, setImportParseError] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportStatus>('idle');
+  const [importRows, setImportRows] = useState<RowResult[]>([]);
+  const [importProgress, setImportProgress] = useState(0);
+  const importCancelRef = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [seasonFilter, setSeasonFilter] = useState('all');
 
@@ -195,70 +246,71 @@ export default function CompetitionsList() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  const handleJsonFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (jsonInputRef.current) jsonInputRef.current.value = '';
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
-        const arr: ImportComp[] = Array.isArray(data) ? data : [data];
-        if (!arr.length || !arr[0].name) throw new Error('Formato inválido');
-        setImportPreview(arr);
-      } catch {
-        toast({ title: 'JSON inválido', description: 'O ficheiro não tem o formato esperado.', variant: 'destructive' });
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const handleImportConfirm = async () => {
-    if (!importPreview) return;
-    setIsImporting(true);
-    let created = 0;
-    try {
-      for (const comp of importPreview) {
-        const { races, ...compData } = comp;
-        const newComp = await createMutation.mutateAsync({ data: {
-          name: compData.name,
-          seasonId: compData.seasonId,
-          startDate: compData.startDate,
-          endDate: compData.endDate ?? null,
-          location: compData.location ?? null,
-          organizer: compData.organizer ?? null,
-        }});
-        if (races?.length) {
-          for (const race of races) {
-            await createRace({
-              name: race.name,
-              competitionId: (newComp as any).id,
-              modality: race.modality ?? null,
-              distance: race.distance ?? null,
-              category: race.category ?? null,
-            });
-          }
-        }
-        created++;
-      }
+  // ── Import helpers ──
+  const resetImport = () => { setImportJson(''); setImportParseError(null); setImportStatus('idle'); setImportRows([]); setImportProgress(0); importCancelRef.current = false; };
+  const handleImportClose = () => {
+    if (importStatus === 'importing') return;
+    importCancelRef.current = true;
+    setImportOpen(false);
+    if (importStatus === 'done') {
       queryClient.invalidateQueries({ queryKey: getListCompetitionsQueryKey() });
       queryClient.invalidateQueries({ queryKey: ['/api/races'] });
-      toast({ title: `${created} competição${created !== 1 ? 'ões' : ''} importada${created !== 1 ? 's' : ''}` });
-      setImportPreview(null);
-    } catch {
-      toast({ title: 'Erro durante importação', variant: 'destructive' });
-    } finally {
-      setIsImporting(false);
     }
+    setTimeout(resetImport, 300);
   };
+  const handleValidate = () => {
+    setImportParseError(null);
+    let parsed: unknown;
+    try { parsed = JSON.parse(importJson.trim()); } catch { setImportParseError('JSON inválido. Verifique a sintaxe.'); return; }
+    const arr = Array.isArray(parsed) ? parsed : [parsed];
+    const rows: RowResult[] = arr.map((item, idx) => {
+      const r = importCompRowSchema.safeParse(item);
+      if (r.success) return { index: idx, raw: item, parsed: r.data, valid: true, importStatus: 'pending' };
+      return { index: idx, raw: item, valid: false, validationError: r.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '), importStatus: 'pending' };
+    });
+    setImportRows(rows); setImportStatus('previewing');
+  };
+  const handleImport = async () => {
+    const validRows = importRows.filter(r => r.valid && r.parsed);
+    if (!validRows.length) return;
+    importCancelRef.current = false;
+    setImportStatus('importing'); setImportProgress(0);
+    const updated = [...importRows];
+    let done = 0;
+    for (const row of validRows) {
+      if (importCancelRef.current) break;
+      const idx = updated.findIndex(r => r.index === row.index);
+      try {
+        const p = row.parsed!;
+        const newComp = await createCompetition({
+          name: p.name, seasonId: p.seasonId, startDate: p.startDate,
+          endDate: p.endDate ?? null, location: p.location ?? null, organizer: p.organizer ?? null,
+        });
+        for (const race of p.races ?? []) {
+          await createRace({ name: race.name, competitionId: newComp.id, modality: race.modality ?? null, distance: race.distance ?? null, category: race.category ?? null });
+        }
+        updated[idx] = { ...updated[idx], importStatus: 'ok' };
+      } catch (err) {
+        updated[idx] = { ...updated[idx], importStatus: 'error', importError: err instanceof Error ? err.message : 'Erro' };
+      }
+      done++; setImportProgress(done); setImportRows([...updated]);
+    }
+    setImportStatus('done');
+    queryClient.invalidateQueries({ queryKey: getListCompetitionsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ['/api/races'] });
+  };
+
+  const validCount = importRows.filter(r => r.valid).length;
+  const invalidCount = importRows.filter(r => !r.valid).length;
+  const okCount = importRows.filter(r => r.importStatus === 'ok').length;
+  const errCount = importRows.filter(r => r.importStatus === 'error').length;
 
   return (
     <>
       <div className="space-y-6">
         <div className="flex justify-end items-center gap-3">
           <div className="flex gap-2">
-            <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleJsonFile} />
-            <Button variant="outline" size="sm" onClick={() => jsonInputRef.current?.click()}>
+            <Button variant="outline" size="sm" onClick={() => { resetImport(); setImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-2" /> Importar JSON
             </Button>
             <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}>
@@ -308,7 +360,7 @@ export default function CompetitionsList() {
                     </TableCell>
                     <TableCell className="font-medium" onClick={() => setExpanded(expanded === comp.id ? null : comp.id)}>{comp.name}</TableCell>
                     <TableCell>{comp.location || '-'}</TableCell>
-                    <TableCell className="text-sm">{comp.startDate}{comp.endDate ? ` → ${comp.endDate}` : ''}</TableCell>
+                    <TableCell className="text-sm">{formatCompetitionDates(comp.startDate, comp.endDate)}</TableCell>
                     <TableCell>{comp.seasonName}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button variant="ghost" size="sm" onClick={() => { setEditing(comp); setOpen(true); }}>Editar</Button>
@@ -367,44 +419,94 @@ export default function CompetitionsList() {
         </DialogContent>
       </Dialog>
 
-      {/* ── JSON import preview dialog ── */}
-      <Dialog open={!!importPreview} onOpenChange={v => !v && setImportPreview(null)}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col overflow-hidden">
+      {/* ── Import JSON dialog ── */}
+      <Dialog open={importOpen} onOpenChange={handleImportClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Confirmar importação</DialogTitle>
+            <DialogTitle>Importar Competições via JSON</DialogTitle>
+            <DialogDescription>Cole um array JSON com as competições a importar.</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto space-y-3 py-1 pr-1">
-            {importPreview?.map((comp, i) => (
-              <div key={i} className="border rounded-lg p-3 space-y-1.5">
-                <p className="font-medium text-sm">{comp.name}</p>
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                  <span>{comp.startDate}{comp.endDate ? ` → ${comp.endDate}` : ''}</span>
-                  {comp.location && <span>{comp.location}</span>}
-                  {comp.organizer && <span>{comp.organizer}</span>}
-                  <span>Época #{comp.seasonId}</span>
+
+          <div className="flex-1 overflow-hidden flex flex-col gap-4 min-h-0">
+            {importStatus === 'idle' && (
+              <div className="flex flex-col gap-3 flex-1">
+                <Textarea
+                  className="flex-1 font-mono text-xs resize-none min-h-[220px]"
+                  placeholder={IMPORT_EXAMPLE}
+                  value={importJson}
+                  onChange={e => { setImportJson(e.target.value); setImportParseError(null); }}
+                />
+                {importParseError && (
+                  <p className="text-sm text-destructive bg-destructive/10 rounded p-2">{importParseError}</p>
+                )}
+                <JsonFormatHint example={IMPORT_EXAMPLE} />
+                <div className="text-xs text-muted-foreground space-y-0.5">
+                  <p><strong>seasonId</strong>: ID numérico da época (vê o ID de cada uma na página Épocas)</p>
+                  <p><strong>startDate</strong>/<strong>endDate</strong>: formato <code className="bg-muted px-1 rounded">AAAA-MM-DD</code></p>
+                  <p><strong>races</strong>: opcional — a maioria dos calendários não tem provas definidas à partida; deixa <code className="bg-muted px-1 rounded">[]</code> e adiciona-as mais tarde ao registar resultados</p>
                 </div>
-                {comp.races && comp.races.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 pl-3 border-l-2 border-muted">
-                    {comp.races.map((r, j) => (
-                      <li key={j} className="text-xs text-muted-foreground">
-                        {r.name}
-                        {r.modality && <span className="ml-1 opacity-60">· {r.modality}</span>}
-                        {r.distance && <span className="ml-1 opacity-60">· {r.distance}</span>}
-                        {r.category && <span className="ml-1 opacity-60">· {r.category}</span>}
-                      </li>
-                    ))}
-                  </ul>
+              </div>
+            )}
+
+            {(importStatus === 'previewing' || importStatus === 'importing' || importStatus === 'done') && (
+              <div className="flex flex-col gap-3 flex-1 min-h-0">
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="font-medium">{importRows.length} linha(s)</span>
+                  {invalidCount > 0 && <span className="text-destructive flex items-center gap-1"><XCircle className="w-3.5 h-3.5" />{invalidCount} inválida(s)</span>}
+                  <span className="text-green-600 flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{validCount} válida(s)</span>
+                  {importStatus === 'importing' && <span className="ml-auto flex items-center gap-1 text-muted-foreground"><Loader2 className="w-3.5 h-3.5 animate-spin" />A importar {importProgress}/{validCount}…</span>}
+                  {importStatus === 'done' && <span className="ml-auto font-medium">{okCount > 0 && <span className="text-green-600">{okCount} importada(s) </span>}{errCount > 0 && <span className="text-destructive">{errCount} com erro</span>}</span>}
+                </div>
+                <ScrollArea className="flex-1 rounded-md border min-h-0" style={{ maxHeight: 320 }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Local</TableHead>
+                        <TableHead>Datas</TableHead>
+                        <TableHead>Época</TableHead>
+                        <TableHead>Provas</TableHead>
+                        <TableHead className="w-8 text-center">✓</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {importRows.map(row => {
+                        const raw = row.raw as Record<string, unknown>;
+                        return (
+                          <TableRow key={row.index} className={!row.valid ? 'bg-destructive/5' : ''}>
+                            <TableCell className="font-mono text-xs text-muted-foreground">{row.index + 1}</TableCell>
+                            <TableCell className="text-sm font-medium">{row.valid ? row.parsed!.name : String(raw?.name ?? '—')}</TableCell>
+                            <TableCell className="text-xs">{row.valid ? (row.parsed!.location ?? '—') : '—'}</TableCell>
+                            <TableCell className="text-xs">{row.valid ? formatCompetitionDates(row.parsed!.startDate, row.parsed!.endDate) : String(raw?.startDate ?? '—')}</TableCell>
+                            <TableCell className="text-xs">{row.valid ? (seasons?.find(s => s.id === row.parsed!.seasonId)?.name ?? `#${row.parsed!.seasonId}`) : '—'}</TableCell>
+                            <TableCell className="text-xs">{row.valid ? (row.parsed!.races?.length ?? 0) : '—'}</TableCell>
+                            <TableCell className="text-center">
+                              {!row.valid ? <span title={row.validationError}><XCircle className="w-4 h-4 text-destructive inline" /></span>
+                                : row.importStatus === 'pending' ? <span className="w-4 h-4 rounded-full bg-muted inline-block" />
+                                : row.importStatus === 'ok' ? <CheckCircle className="w-4 h-4 text-green-600 inline" />
+                                : <span title={row.importError}><XCircle className="w-4 h-4 text-destructive inline" /></span>}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+                {importStatus === 'previewing' && invalidCount > 0 && (
+                  <div className="text-xs text-destructive space-y-1 max-h-16 overflow-y-auto">
+                    {importRows.filter(r => !r.valid).map(r => <div key={r.index}><span className="font-medium">Linha {r.index + 1}:</span> {r.validationError}</div>)}
+                  </div>
                 )}
               </div>
-            ))}
+            )}
           </div>
-          <DialogFooter className="shrink-0 border-t pt-4">
-            <Button variant="outline" onClick={() => setImportPreview(null)}>Cancelar</Button>
-            <Button onClick={handleImportConfirm} disabled={isImporting}>
-              {isImporting
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />A importar…</>
-                : `Importar ${importPreview?.length ?? 0} competição${(importPreview?.length ?? 0) !== 1 ? 'ões' : ''}`}
-            </Button>
+
+          <DialogFooter className="mt-4 shrink-0">
+            {importStatus === 'idle' && (<><Button variant="outline" onClick={handleImportClose}>Cancelar</Button><Button onClick={handleValidate} disabled={!importJson.trim()}>Validar JSON</Button></>)}
+            {importStatus === 'previewing' && (<><Button variant="outline" onClick={() => setImportStatus('idle')}>← Voltar</Button><Button onClick={handleImport} disabled={validCount === 0}>Importar {validCount} competição{validCount !== 1 ? 'ões' : ''}</Button></>)}
+            {importStatus === 'importing' && (<Button variant="outline" disabled><Loader2 className="w-4 h-4 mr-2 animate-spin" />A importar…</Button>)}
+            {importStatus === 'done' && (<><Button variant="outline" onClick={() => { setImportStatus('idle'); setImportJson(''); setImportRows([]); setImportProgress(0); }}>Nova Importação</Button><Button onClick={handleImportClose}>Fechar</Button></>)}
           </DialogFooter>
         </DialogContent>
       </Dialog>

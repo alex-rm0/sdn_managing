@@ -218,9 +218,17 @@ router.get("/quotas/generate", requireAdmin, async (_req, res): Promise<void> =>
 router.post("/quotas/generate", requireAdmin, async (req, res): Promise<void> => {
   const parsed = GenerateQuotasBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { seasonId, quotaPlanId, period } = parsed.data;
-  const [plan] = await db.select().from(quotaPlansTable).where(eq(quotaPlansTable.id, quotaPlanId));
-  if (!plan) { res.status(404).json({ error: "Plano não encontrado" }); return; }
+  const { seasonId, period } = parsed.data;
+
+  const [season] = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId));
+  if (!season) { res.status(404).json({ error: "Época não encontrada" }); return; }
+
+  const [plans, rules] = await Promise.all([
+    db.select().from(quotaPlansTable).where(eq(quotaPlansTable.seasonId, seasonId)),
+    db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge),
+  ]);
+  const planByCategory = new Map(plans.map(p => [p.category, p]));
+  const refYear = new Date(season.endDate).getFullYear();
 
   let athletes = await db.select().from(athletesTable).where(eq(athletesTable.status, "ativo"));
 
@@ -233,20 +241,29 @@ router.post("/quotas/generate", requireAdmin, async (req, res): Promise<void> =>
     athletes = athletes.filter(a => !existingIds.has(a.id));
   }
 
-  const quotaValues: Array<typeof quotasTable.$inferInsert> = athletes.map(a => ({
-    athleteId: a.id,
-    seasonId,
-    period: period ?? null,
-    category: plan.category,
-    amountDue: plan.amount,
-    dueDate: null,
-  }));
-
-  if (quotaValues.length > 0) {
-    await db.insert(quotasTable).values(quotaValues);
+  // Each athlete gets billed under the plan matching their own escalão — athletes
+  // whose escalão has no matching plan are skipped (no fallback/default price).
+  const quotaValues: Array<typeof quotasTable.$inferInsert> = [];
+  for (const a of athletes) {
+    const category = resolveCategory(
+      { birthDate: String(a.birthDate), recreational: a.recreational, competesAsSenior: a.competesAsSenior },
+      rules, refYear,
+    );
+    const plan = category ? planByCategory.get(category) : undefined;
+    if (!plan) continue;
+    quotaValues.push({
+      athleteId: a.id,
+      seasonId,
+      period: period ?? null,
+      category: plan.category,
+      amountDue: plan.amount,
+      dueDate: null,
+    });
   }
 
-  const created = await db.select().from(quotasTable).where(eq(quotasTable.seasonId, seasonId));
+  const created = quotaValues.length > 0
+    ? await db.insert(quotasTable).values(quotaValues).returning()
+    : [];
   const { rules: cr, athleteCache: ac, seasonCache: sc } = await loadCaches(created.map(r => r.athleteId), created.map(r => r.seasonId));
   const enriched = await Promise.all(created.map(r => enrichQuota(r, cr, ac, sc)));
   res.json(enriched);
