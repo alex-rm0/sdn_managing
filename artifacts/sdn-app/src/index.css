@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -57,6 +57,23 @@
   --color-sidebar-accent-border: var(--sidebar-accent-border);
   --color-sidebar-ring: hsl(var(--sidebar-ring));
 
+  /* Brand accents — not part of the shadcn semantic set, used directly in the
+     redesigned shell (sidebar, header, dashboard). Kept as flat hex so they
+     stay pixel-true to the reference mockup instead of round-tripping HSL. */
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-cyan-dark: var(--brand-cyan-dark);
+  --color-brand-cyan-light: var(--brand-cyan-light);
+  --color-brand-cyan-bg: var(--brand-cyan-bg);
+  --color-brand-cyan-border: var(--brand-cyan-border);
+  --color-brand-danger: var(--brand-danger);
+  --color-brand-danger-dark: var(--brand-danger-dark);
+  --color-brand-danger-bg: var(--brand-danger-bg);
+  --color-brand-danger-soft-bg: var(--brand-danger-soft-bg);
+  --color-brand-danger-border: var(--brand-danger-border);
+  --color-brand-success: var(--brand-success);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-text-soft: var(--brand-text-soft);
+
   --font-sans: var(--app-font-sans);
   --font-mono: var(--app-font-mono);
 
@@ -67,94 +84,108 @@
 }
 
 :root {
-  --background: 210 40% 98%;
-  --foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 222 47% 11%;
-  
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 214 32% 91%;
-  
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 222 47% 11%;
-  --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 217 33% 17%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 214 32% 91%;
-  
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --popover-border: 214 32% 91%;
-  
-  --primary: 222 47% 11%;
-  --primary-foreground: 210 40% 98%;
-  
-  --secondary: 214 32% 91%;
-  --secondary-foreground: 222 47% 11%;
-  
-  --muted: 214 32% 91%;
-  --muted-foreground: 215 16% 47%;
-  
-  --accent: 214 32% 91%;
-  --accent-foreground: 222 47% 11%;
-  
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --background: 210 22% 96%;
+  --foreground: 217 46% 10%;
+  --border: 220 14% 91%;
+  --input: 220 14% 91%;
+  --ring: 190 90% 44%;
 
-  --success: 160 84% 39%;
+  --card: 0 0% 100%;
+  --card-foreground: 217 46% 10%;
+  --card-border: 220 14% 91%;
+
+  --sidebar: 217 70% 14%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-border: 217 70% 14%;
+  --sidebar-primary: 210 40% 98%;
+  --sidebar-primary-foreground: 217 70% 14%;
+  --sidebar-accent: 190 90% 44%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 190 90% 44%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 217 46% 10%;
+  --popover-border: 220 14% 91%;
+
+  --primary: 217 70% 14%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 220 14% 91%;
+  --secondary-foreground: 217 46% 10%;
+
+  --muted: 220 14% 94%;
+  --muted-foreground: 219 14% 46%;
+
+  --accent: 190 55% 95%;
+  --accent-foreground: 190 88% 31%;
+
+  --destructive: 11 82% 47%;
+  --destructive-foreground: 0 0% 100%;
+
+  --success: 155 75% 37%;
   --success-foreground: 0 0% 100%;
 
-  --warning: 45 93% 47%;
+  --warning: 13 89% 59%;
   --warning-foreground: 0 0% 100%;
 
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
-  --app-font-mono: 'JetBrains Mono', monospace;
-  
-  --radius: 0.3rem;
+  --brand-cyan: #0BB4D4;
+  --brand-cyan-dark: #0A7E96;
+  --brand-cyan-light: #6ECBDF;
+  --brand-cyan-bg: #EFF9FB;
+  --brand-cyan-border: #CDEDF4;
+  --brand-danger: #D93A16;
+  --brand-danger-dark: #B72F10;
+  --brand-danger-bg: #FDF4F1;
+  --brand-danger-soft-bg: #FDEEE9;
+  --brand-danger-border: #F7DCD3;
+  --brand-success: #17A46A;
+  --brand-orange: #F4623A;
+  --brand-text-soft: #6B7688;
+
+  --app-font-sans: 'Archivo', sans-serif;
+  --app-font-mono: 'IBM Plex Mono', monospace;
+
+  --radius: 0.55rem;
 }
 
 .dark {
-  --background: 222 47% 11%;
+  --background: 217 46% 8%;
   --foreground: 210 40% 98%;
-  --border: 217 33% 17%;
-  --input: 217 33% 17%;
-  --ring: 214 32% 91%;
-  
-  --card: 222 47% 11%;
+  --border: 217 33% 20%;
+  --input: 217 33% 20%;
+  --ring: 190 90% 44%;
+
+  --card: 217 46% 11%;
   --card-foreground: 210 40% 98%;
-  --card-border: 217 33% 17%;
-  
-  --sidebar: 222 47% 11%;
+  --card-border: 217 33% 20%;
+
+  --sidebar: 217 70% 14%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 217 33% 17%;
+  --sidebar-border: 217 40% 22%;
   --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 217 33% 17%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 214 32% 91%;
-  
-  --popover: 222 47% 11%;
+  --sidebar-primary-foreground: 217 70% 14%;
+  --sidebar-accent: 190 90% 44%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 190 90% 44%;
+
+  --popover: 217 46% 11%;
   --popover-foreground: 210 40% 98%;
-  --popover-border: 217 33% 17%;
-  
+  --popover-border: 217 33% 20%;
+
   --primary: 210 40% 98%;
-  --primary-foreground: 222 47% 11%;
-  
-  --secondary: 217 33% 17%;
+  --primary-foreground: 217 46% 10%;
+
+  --secondary: 217 33% 20%;
   --secondary-foreground: 210 40% 98%;
-  
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20.2% 65.1%;
-  
-  --accent: 217 33% 17%;
-  --accent-foreground: 210 40% 98%;
-  
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
+
+  --muted: 217 33% 20%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 217 33% 20%;
+  --accent-foreground: 190 70% 75%;
+
+  --destructive: 11 70% 55%;
+  --destructive-foreground: 0 0% 100%;
 }
 
 @layer base {

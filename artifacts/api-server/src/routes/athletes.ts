@@ -18,6 +18,26 @@ function computeCategory(birthDate: string, categoryRules: Array<{ name: string;
   return null;
 }
 
+// Recreational athletes are always "Lazer" regardless of age. Veterano-age
+// athletes who still compete in Sénior show as "Sénior" instead.
+function resolveCategory(
+  athlete: { birthDate: string; recreational: boolean; competesAsSenior: boolean },
+  categoryRules: Array<{ name: string; minAge: number; maxAge: number | null }>,
+  refYear?: number,
+): string | null {
+  if (athlete.recreational) return "Lazer";
+  const computed = computeCategory(athlete.birthDate, categoryRules, refYear);
+  if (computed === "Veterano" && athlete.competesAsSenior) return "Sénior";
+  return computed;
+}
+
+// Escalões are computed relative to the active season's end year (not the
+// wall-clock year), so toggling "Época atual" is what actually shifts them.
+async function getActiveSeasonRefYear(): Promise<number | undefined> {
+  const [active] = await db.select().from(seasonsTable).where(eq(seasonsTable.active, true));
+  return active ? new Date(active.endDate).getFullYear() : undefined;
+}
+
 const router: IRouter = Router();
 
 router.get("/athletes", requireAuth, async (req, res): Promise<void> => {
@@ -35,11 +55,12 @@ router.get("/athletes", requireAuth, async (req, res): Promise<void> => {
     athletes = athletes.filter(a => a.name.toLowerCase().includes(q) || (a.memberNumber?.toLowerCase().includes(q)) || (a.fprNumber?.toLowerCase().includes(q)));
   }
 
-  const year = seasonId ? undefined : new Date().getFullYear();
-  let refYear = year;
+  let refYear: number | undefined;
   if (seasonId) {
     const [season] = await db.select().from(seasonsTable).where(eq(seasonsTable.id, Number(seasonId)));
     if (season) refYear = new Date(season.endDate).getFullYear();
+  } else {
+    refYear = await getActiveSeasonRefYear();
   }
 
   // Fetch overrides if seasonId provided
@@ -51,7 +72,7 @@ router.get("/athletes", requireAuth, async (req, res): Promise<void> => {
 
   const result = athletes.map(a => {
     const override = overrides.find(o => o.athleteId === a.id);
-    const category = override?.categoryOverride ?? computeCategory(a.birthDate, categoryRules, refYear);
+    const category = override?.categoryOverride ?? resolveCategory(a, categoryRules, refYear);
     return { ...a, category, categoryOverride: override?.categoryOverride ?? null };
   });
 
@@ -63,7 +84,7 @@ router.post("/athletes", requireAdmin, async (req, res): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const [athlete] = await db.insert(athletesTable).values(parsed.data).returning();
   const categoryRules = await db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge);
-  const category = computeCategory(athlete.birthDate, categoryRules);
+  const category = resolveCategory(athlete, categoryRules, await getActiveSeasonRefYear());
   res.status(201).json({ ...athlete, category, categoryOverride: null });
 });
 
@@ -75,7 +96,7 @@ router.get("/athletes/:id", requireAuth, async (req, res): Promise<void> => {
   if (!athlete) { res.status(404).json({ error: "Atleta não encontrado" }); return; }
 
   const categoryRules = await db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge);
-  const category = computeCategory(athlete.birthDate, categoryRules);
+  const category = resolveCategory(athlete, categoryRules, await getActiveSeasonRefYear());
 
   // Results (linked by athleteId for individually-linked entries)
   const results = await db.select({
@@ -121,7 +142,7 @@ router.patch("/athletes/:id", requireAdmin, async (req, res): Promise<void> => {
   const [athlete] = await db.update(athletesTable).set(parsed.data).where(eq(athletesTable.id, params.data.id)).returning();
   if (!athlete) { res.status(404).json({ error: "Atleta não encontrado" }); return; }
   const categoryRules = await db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge);
-  const category = computeCategory(athlete.birthDate, categoryRules);
+  const category = resolveCategory(athlete, categoryRules, await getActiveSeasonRefYear());
   res.json({ ...athlete, category, categoryOverride: null });
 });
 
@@ -160,7 +181,7 @@ router.patch("/athletes/:id/category-override", requireAdmin, async (req, res): 
   const [athlete] = await db.select().from(athletesTable).where(eq(athletesTable.id, params.data.id));
   if (!athlete) { res.status(404).json({ error: "Atleta não encontrado" }); return; }
   const categoryRules = await db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge);
-  const category = computeCategory(athlete.birthDate, categoryRules);
+  const category = categoryOverride ?? resolveCategory(athlete, categoryRules, await getActiveSeasonRefYear());
   res.json({ ...athlete, category, categoryOverride: categoryOverride ?? null });
 });
 

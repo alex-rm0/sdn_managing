@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListAthletes, useCreateAthlete, useUpdateAthlete, useDeleteAthlete,
-  getListAthletesQueryKey, createAthlete,
+  getListAthletesQueryKey, createAthlete, updateAthlete, useListCategoryRules,
 } from '@workspace/api-client-react';
 import type { Athlete } from '@workspace/api-client-react';
 import { Link } from 'wouter';
@@ -19,7 +19,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Download, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { Search, Plus, Download, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp, X } from 'lucide-react';
 
 function JsonFormatHint({ example }: { example: string }) {
   const [open, setOpen] = useState(false);
@@ -40,7 +43,8 @@ const importRowSchema = z.object({
   name: z.string().min(1),
   birthDate: z.string().min(1),
   gender: z.enum(['M', 'F']),
-  affiliationDate: z.string().min(1),
+  affiliationDate: z.string().nullable().optional(),
+  recreational: z.boolean().optional(),
   status: z.enum(['ativo', 'inativo', 'suspenso']).default('ativo'),
   email: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
@@ -66,12 +70,14 @@ const schema = z.object({
   phone: z.string().nullable().optional(),
   memberNumber: z.string().nullable().optional(),
   fprNumber: z.string().nullable().optional(),
-  affiliationDate: z.string().min(1, 'Data de filiação obrigatória'),
+  affiliationDate: z.string().nullable().optional(),
+  recreational: z.boolean().optional(),
+  competesAsSenior: z.boolean().optional(),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   notes: z.string().nullable().optional(),
 });
 
-const defaultValues = { name: '', birthDate: '', gender: 'M' as const, email: '', phone: '', memberNumber: '', fprNumber: '', affiliationDate: '', status: 'ativo' as const, notes: '' };
+const defaultValues = { name: '', birthDate: '', gender: 'M' as const, email: '', phone: '', memberNumber: '', fprNumber: '', affiliationDate: '', recreational: false, competesAsSenior: false, status: 'ativo' as const, notes: '' };
 
 export default function AthletesList() {
   const { toast } = useToast();
@@ -80,6 +86,9 @@ export default function AthletesList() {
   const [editing, setEditing] = useState<Athlete | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkPending, setBulkPending] = useState(false);
 
   // ── Import dialog state ──
   const [importOpen, setImportOpen] = useState(false);
@@ -91,13 +100,18 @@ export default function AthletesList() {
   const importCancelRef = useRef(false);
 
   const { data: athletes, isLoading } = useListAthletes();
+  const { data: categoryRules } = useListCategoryRules();
+  const categoryOptions = useMemo(() => {
+    const names = (categoryRules ?? []).map(r => r.name);
+    return [...names, 'Lazer'];
+  }, [categoryRules]);
 
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
 
   useEffect(() => {
     if (open) {
       if (editing) {
-        form.reset({ ...editing, email: editing.email ?? '', phone: editing.phone ?? '', memberNumber: editing.memberNumber ?? '', fprNumber: editing.fprNumber ?? '', notes: editing.notes ?? '' });
+        form.reset({ ...editing, email: editing.email ?? '', phone: editing.phone ?? '', memberNumber: editing.memberNumber ?? '', fprNumber: editing.fprNumber ?? '', notes: editing.notes ?? '', affiliationDate: editing.affiliationDate ?? '', recreational: editing.recreational ?? false, competesAsSenior: editing.competesAsSenior ?? false });
       } else {
         form.reset(defaultValues);
       }
@@ -120,7 +134,7 @@ export default function AthletesList() {
   }});
 
   const onSubmit = (values: z.infer<typeof schema>) => {
-    const data = { ...values, email: values.email || null, phone: values.phone || null, memberNumber: values.memberNumber || null, fprNumber: values.fprNumber || null, notes: values.notes || null };
+    const data = { ...values, email: values.email || null, phone: values.phone || null, memberNumber: values.memberNumber || null, fprNumber: values.fprNumber || null, notes: values.notes || null, affiliationDate: values.affiliationDate || null, recreational: values.recreational ?? false, competesAsSenior: values.competesAsSenior ?? false };
     if (editing) updateMutation.mutate({ id: editing.id, data });
     else createMutation.mutate({ data });
   };
@@ -130,9 +144,48 @@ export default function AthletesList() {
     return athletes.filter(a => {
       const matchesSearch = a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.memberNumber && a.memberNumber.includes(searchTerm)) || (a.fprNumber && a.fprNumber.includes(searchTerm));
       const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const matchesCategory = categoryFilter === 'all' || (categoryFilter === '__none__' ? !a.category : a.category === categoryFilter);
+      return matchesSearch && matchesStatus && matchesCategory;
     });
-  }, [athletes, searchTerm, statusFilter]);
+  }, [athletes, searchTerm, statusFilter, categoryFilter]);
+
+  const toggleSelected = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const allVisibleSelected = filteredAthletes.length > 0 && filteredAthletes.every(a => selectedIds.has(a.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedIds(prev => {
+      if (allVisibleSelected) {
+        const next = new Set(prev);
+        filteredAthletes.forEach(a => next.delete(a.id));
+        return next;
+      }
+      const next = new Set(prev);
+      filteredAthletes.forEach(a => next.add(a.id));
+      return next;
+    });
+  };
+
+  const handleBulkUpdate = async (data: { status?: 'ativo' | 'inativo' | 'suspenso'; recreational?: boolean; competesAsSenior?: boolean }) => {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkPending(true);
+    const results = await Promise.allSettled(ids.map(id => updateAthlete(id, data)));
+    setBulkPending(false);
+    const failed = results.filter(r => r.status === 'rejected').length;
+    queryClient.invalidateQueries({ queryKey: getListAthletesQueryKey() });
+    setSelectedIds(new Set());
+    if (failed > 0) {
+      toast({ title: `${ids.length - failed} atualizado(s), ${failed} falharam`, variant: 'destructive' });
+    } else {
+      toast({ title: `${ids.length} atleta${ids.length !== 1 ? 's' : ''} atualizado${ids.length !== 1 ? 's' : ''}!` });
+    }
+  };
 
   const handleExport = () => {
     if (!filteredAthletes.length) return;
@@ -214,7 +267,7 @@ export default function AthletesList() {
           fprNumber: row.parsed!.fprNumber || null,
           notes: row.parsed!.notes || null,
         };
-        await createAthlete({ data });
+        await createAthlete(data);
         updated[idx] = { ...updated[idx], importStatus: 'ok' };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Erro desconhecido';
@@ -239,8 +292,7 @@ export default function AthletesList() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Atletas</h1>
+        <div className="flex flex-col sm:flex-row sm:justify-end items-start sm:items-center gap-4">
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" /> Exportar</Button>
             <Button variant="outline" size="sm" onClick={() => { resetImport(); setImportOpen(true); }}><Upload className="w-4 h-4 mr-2" /> Importar</Button>
@@ -248,26 +300,76 @@ export default function AthletesList() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Procurar por nome ou número..." className="pl-9" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-border flex-wrap">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Procurar por nome ou número..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os estados</SelectItem>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
+                <SelectItem value="suspenso">Suspenso</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Escalão" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os escalões</SelectItem>
+                <SelectItem value="__none__">Sem escalão</SelectItem>
+                {categoryOptions.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className="font-mono text-[10.5px] tracking-wide uppercase text-muted-foreground whitespace-nowrap">
+              {filteredAthletes.length} {filteredAthletes.length === 1 ? 'atleta' : 'atletas'}
+            </span>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Estado" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os estados</SelectItem>
-              <SelectItem value="ativo">Ativo</SelectItem>
-              <SelectItem value="inativo">Inativo</SelectItem>
-              <SelectItem value="suspenso">Suspenso</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        <div className="bg-card rounded-md border shadow-sm">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-[18px] py-2.5 border-b border-border bg-brand-cyan-bg">
+              <span className="text-sm font-medium text-brand-cyan-dark">
+                {selectedIds.size} selecionado{selectedIds.size !== 1 ? 's' : ''}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs bg-card" disabled={bulkPending}>
+                    {bulkPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}
+                    Ações em massa <ChevronDown className="w-3 h-3 ml-1.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Estado</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ status: 'ativo' })}>Marcar como ativo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ status: 'inativo' })}>Marcar como inativo</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ status: 'suspenso' })}>Marcar como suspenso</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Escalão de lazer</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ recreational: true })}>Marcar como atleta de lazer</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ recreational: false })}>Remover estatuto de lazer</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Veterano em Sénior</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ competesAsSenior: true })}>Marcar como Veterano em Sénior</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBulkUpdate({ competesAsSenior: false })}>Remover Veterano em Sénior</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+                <X className="w-3.5 h-3.5 mr-1" /> Limpar seleção
+              </Button>
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-9">
+                  <Checkbox checked={allVisibleSelected} onCheckedChange={toggleSelectAllVisible} aria-label="Selecionar todos" />
+                </TableHead>
                 <TableHead>Nº Sócio</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Categoria</TableHead>
@@ -279,11 +381,14 @@ export default function AthletesList() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">A carregar...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">A carregar...</TableCell></TableRow>
               ) : filteredAthletes.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum atleta encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum atleta encontrado.</TableCell></TableRow>
               ) : filteredAthletes.map(athlete => (
-                <TableRow key={athlete.id}>
+                <TableRow key={athlete.id} data-state={selectedIds.has(athlete.id) ? 'selected' : undefined}>
+                  <TableCell>
+                    <Checkbox checked={selectedIds.has(athlete.id)} onCheckedChange={() => toggleSelected(athlete.id)} aria-label={`Selecionar ${athlete.name}`} />
+                  </TableCell>
                   <TableCell className="font-mono text-xs">{athlete.memberNumber || '-'}</TableCell>
                   <TableCell className="font-medium">{athlete.name}</TableCell>
                   <TableCell>{athlete.category || '-'}</TableCell>
@@ -360,7 +465,7 @@ export default function AthletesList() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="affiliationDate" render={({ field }) => (
-                  <FormItem><FormLabel>Data de Filiação *</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Data de Filiação</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem><FormLabel>Estado *</FormLabel>
@@ -375,6 +480,18 @@ export default function AthletesList() {
                   </FormItem>
                 )} />
               </div>
+              <FormField control={form.control} name="recreational" render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
+                  <FormLabel className="!mt-0">Atleta de lazer (sem categoria de competição)</FormLabel>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="competesAsSenior" render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
+                  <FormLabel className="!mt-0">Veterano que compete em Sénior (só relevante a partir dos 36 anos)</FormLabel>
+                </FormItem>
+              )} />
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem><FormLabel>Notas</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )} />
@@ -393,7 +510,7 @@ export default function AthletesList() {
           <DialogHeader>
             <DialogTitle>Importar Atletas via JSON</DialogTitle>
             <DialogDescription>
-              Cole um array JSON com os atletas a importar. Campos obrigatórios: <code className="text-xs bg-muted px-1 rounded">name</code>, <code className="text-xs bg-muted px-1 rounded">birthDate</code>, <code className="text-xs bg-muted px-1 rounded">gender</code>, <code className="text-xs bg-muted px-1 rounded">affiliationDate</code>.
+              Cole um array JSON com os atletas a importar. Campos obrigatórios: <code className="text-xs bg-muted px-1 rounded">name</code>, <code className="text-xs bg-muted px-1 rounded">birthDate</code>, <code className="text-xs bg-muted px-1 rounded">gender</code>.
             </DialogDescription>
           </DialogHeader>
 
@@ -418,7 +535,8 @@ export default function AthletesList() {
                 <div className="text-xs text-muted-foreground space-y-0.5">
                   <p><strong>gender</strong>: <code className="bg-muted px-1 rounded">M</code> | <code className="bg-muted px-1 rounded">F</code></p>
                   <p><strong>status</strong>: <code className="bg-muted px-1 rounded">ativo</code> | <code className="bg-muted px-1 rounded">inativo</code> | <code className="bg-muted px-1 rounded">suspenso</code> (omissível, padrão: ativo)</p>
-                  <p><strong>birthDate</strong>, <strong>affiliationDate</strong>: formato <code className="bg-muted px-1 rounded">AAAA-MM-DD</code></p>
+                  <p><strong>birthDate</strong>, <strong>affiliationDate</strong> (opcional): formato <code className="bg-muted px-1 rounded">AAAA-MM-DD</code></p>
+                  <p><strong>recreational</strong>: <code className="bg-muted px-1 rounded">true</code> | <code className="bg-muted px-1 rounded">false</code> (omissível, padrão: false) — atleta de lazer, sem categoria de competição</p>
                 </div>
               </div>
             )}
@@ -475,7 +593,7 @@ export default function AthletesList() {
                               {row.valid ? row.parsed!.gender : (typeof raw?.gender === 'string' ? raw.gender : '—')}
                             </TableCell>
                             <TableCell className="text-xs">
-                              {row.valid ? row.parsed!.affiliationDate : (typeof raw?.affiliationDate === 'string' ? raw.affiliationDate : '—')}
+                              {row.valid ? (row.parsed!.affiliationDate || '—') : (typeof raw?.affiliationDate === 'string' ? raw.affiliationDate : '—')}
                             </TableCell>
                             <TableCell className="text-xs">
                               {row.valid ? (row.parsed!.status ?? 'ativo') : '—'}

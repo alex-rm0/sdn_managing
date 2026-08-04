@@ -39,6 +39,9 @@ import type {
   CrewInput,
   CrewUpdate,
   DashboardStats,
+  RemindersResponse,
+  SearchResponse,
+  GetSearchParams,
   Document,
   DocumentInput,
   DocumentUpdate,
@@ -216,7 +219,7 @@ export const getLoginUrl = () => {
 }
 
 /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const login = async (loginInput: LoginInput, options?: RequestInit): Promise<AuthUser> => {
 
@@ -265,7 +268,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LoginMutationError = ErrorType<void>
 
     /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const useLogin = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof login>>, TError,{data: BodyType<LoginInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -6542,6 +6545,137 @@ export function useGetDashboard<TData = Awaited<ReturnType<typeof getDashboard>>
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+export const getGetRemindersUrl = () => {
+
+
+  return `/api/reminders`
+}
+
+export const getReminders = async ( options?: RequestInit): Promise<RemindersResponse> => {
+
+  return customFetch<RemindersResponse>(getGetRemindersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+export const getGetRemindersQueryKey = () => {
+    return [
+    `/api/reminders`
+    ] as const;
+    }
+
+
+export const getGetRemindersQueryOptions = <TData = Awaited<ReturnType<typeof getReminders>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReminders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRemindersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReminders>>> = ({ signal }) => getReminders({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReminders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRemindersQueryResult = NonNullable<Awaited<ReturnType<typeof getReminders>>>
+export type GetRemindersQueryError = ErrorType<unknown>
+
+
+
+export function useGetReminders<TData = Awaited<ReturnType<typeof getReminders>>, TError = ErrorType<unknown>>(
+ options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReminders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRemindersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+export const getGetSearchUrl = (params?: GetSearchParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/search?${stringifiedParams}` : `/api/search`
+}
+
+export const getSearch = async (params?: GetSearchParams, options?: RequestInit): Promise<SearchResponse> => {
+
+  return customFetch<SearchResponse>(getGetSearchUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+export const getGetSearchQueryKey = (params?: GetSearchParams,) => {
+    return [
+    `/api/search`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSearchQueryOptions = <TData = Awaited<ReturnType<typeof getSearch>>, TError = ErrorType<unknown>>(params?: GetSearchParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSearch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSearchQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSearch>>> = ({ signal }) => getSearch(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSearch>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSearchQueryResult = NonNullable<Awaited<ReturnType<typeof getSearch>>>
+export type GetSearchQueryError = ErrorType<unknown>
+
+
+
+export function useGetSearch<TData = Awaited<ReturnType<typeof getSearch>>, TError = ErrorType<unknown>>(
+ params?: GetSearchParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSearch>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSearchQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

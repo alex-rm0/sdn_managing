@@ -9,6 +9,7 @@ import { Layout } from '@/components/Layout';
 // Page Imports
 import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
+import Lembretes from '@/pages/lembretes';
 import Estatisticas from '@/pages/estatisticas';
 import AthletesList from '@/pages/athletes/index';
 import AthleteDetail from '@/pages/athletes/detail';
@@ -25,6 +26,10 @@ import SchedulesList from '@/pages/schedules/index';
 import UsersList from '@/pages/users/index';
 import DocumentsList from '@/pages/documents/index';
 import MeetingsList from '@/pages/meetings/index';
+import MeetingDetail from '@/pages/meetings/detail';
+import MeetingEdit from '@/pages/meetings/edit';
+import MeetingPrepare from '@/pages/meetings/prepare';
+import NoticiaIA from '@/pages/noticia-ia';
 import EquipaPage from '@/pages/equipa/index';
 import { useEffect } from 'react';
 
@@ -60,6 +65,9 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/">
         {() => <ProtectedRoute component={Dashboard} adminOnly />}
+      </Route>
+      <Route path="/lembretes">
+        {() => <ProtectedRoute component={Lembretes} adminOnly />}
       </Route>
       <Route path="/atletas">
         {() => <ProtectedRoute component={AthletesList} adminOnly />}
@@ -111,6 +119,18 @@ function Router() {
       </Route>
       <Route path="/reunioes">
         {() => <ProtectedRoute component={MeetingsList} adminOnly />}
+      </Route>
+      <Route path="/reunioes/:id/editar">
+        {() => <ProtectedRoute component={MeetingEdit} adminOnly />}
+      </Route>
+      <Route path="/reunioes/:id/preparar">
+        {() => <ProtectedRoute component={MeetingPrepare} adminOnly />}
+      </Route>
+      <Route path="/reunioes/:id">
+        {() => <ProtectedRoute component={MeetingDetail} adminOnly />}
+      </Route>
+      <Route path="/noticia-ia">
+        {() => <ProtectedRoute component={NoticiaIA} adminOnly />}
       </Route>
       <Route component={NotFound} />
     </Switch>

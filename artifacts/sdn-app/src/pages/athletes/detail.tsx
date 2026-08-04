@@ -20,6 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowLeft, Edit, Trash2, Trophy } from 'lucide-react';
 import { Link } from 'wouter';
@@ -32,7 +33,9 @@ const schema = z.object({
   phone: z.string().nullable().optional(),
   memberNumber: z.string().nullable().optional(),
   fprNumber: z.string().nullable().optional(),
-  affiliationDate: z.string().min(1),
+  affiliationDate: z.string().nullable().optional(),
+  recreational: z.boolean().optional(),
+  competesAsSenior: z.boolean().optional(),
   status: z.enum(['ativo', 'inativo', 'suspenso']),
   notes: z.string().nullable().optional(),
 });
@@ -48,11 +51,11 @@ export default function AthleteDetail() {
   const { data: athlete, isLoading } = useGetAthlete(id);
   const { data: attendance } = useGetAthleteAttendanceSummary(id);
 
-  const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { name: '', birthDate: '', gender: 'M', email: '', phone: '', memberNumber: '', fprNumber: '', affiliationDate: '', status: 'ativo', notes: '' } });
+  const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues: { name: '', birthDate: '', gender: 'M', email: '', phone: '', memberNumber: '', fprNumber: '', affiliationDate: '', recreational: false, competesAsSenior: false, status: 'ativo', notes: '' } });
 
   useEffect(() => {
     if (editOpen && athlete) {
-      form.reset({ ...athlete, email: athlete.email ?? '', phone: athlete.phone ?? '', memberNumber: athlete.memberNumber ?? '', fprNumber: athlete.fprNumber ?? '', notes: athlete.notes ?? '' });
+      form.reset({ ...athlete, email: athlete.email ?? '', phone: athlete.phone ?? '', memberNumber: athlete.memberNumber ?? '', fprNumber: athlete.fprNumber ?? '', notes: athlete.notes ?? '', affiliationDate: athlete.affiliationDate ?? '', recreational: athlete.recreational ?? false, competesAsSenior: athlete.competesAsSenior ?? false });
     }
   }, [editOpen, athlete]);
 
@@ -76,7 +79,7 @@ export default function AthleteDetail() {
   }});
 
   const onSubmit = (values: z.infer<typeof schema>) => {
-    const data = { ...values, email: values.email || null, phone: values.phone || null, memberNumber: values.memberNumber || null, fprNumber: values.fprNumber || null, notes: values.notes || null };
+    const data = { ...values, email: values.email || null, phone: values.phone || null, memberNumber: values.memberNumber || null, fprNumber: values.fprNumber || null, notes: values.notes || null, affiliationDate: values.affiliationDate || null, recreational: values.recreational ?? false, competesAsSenior: values.competesAsSenior ?? false };
     updateMutation.mutate({ id, data });
   };
 
@@ -140,7 +143,7 @@ export default function AthleteDetail() {
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Nº Sócio</span><span className="font-mono">{athlete.memberNumber || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Nº FPR</span><span className="font-mono">{athlete.fprNumber || '-'}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Filiação</span><span>{athlete.affiliationDate}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Filiação</span><span>{athlete.affiliationDate || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Categoria</span><span>{athlete.category || '-'}</span></div>
                 </CardContent>
               </Card>
@@ -238,7 +241,7 @@ export default function AthleteDetail() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField control={form.control} name="affiliationDate" render={({ field }) => (
-                  <FormItem><FormLabel>Data Filiação *</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Data Filiação</FormLabel><FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem><FormLabel>Estado *</FormLabel>
@@ -253,6 +256,18 @@ export default function AthleteDetail() {
                   </FormItem>
                 )} />
               </div>
+              <FormField control={form.control} name="recreational" render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
+                  <FormLabel className="!mt-0">Atleta de lazer (sem categoria de competição)</FormLabel>
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="competesAsSenior" render={({ field }) => (
+                <FormItem className="flex items-center gap-3">
+                  <FormControl><Switch checked={field.value ?? false} onCheckedChange={field.onChange} /></FormControl>
+                  <FormLabel className="!mt-0">Veterano que compete em Sénior (só relevante a partir dos 36 anos)</FormLabel>
+                </FormItem>
+              )} />
               <FormField control={form.control} name="notes" render={({ field }) => (
                 <FormItem><FormLabel>Notas</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
               )} />

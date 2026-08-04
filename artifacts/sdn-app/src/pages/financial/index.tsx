@@ -244,8 +244,7 @@ export default function FinancialPage() {
     <>
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
+        <div className="flex items-center justify-end gap-3 flex-wrap">
           <SearchableSelect
             options={seasonOptions} value={seasonId} onChange={setSeasonId}
             placeholder="Selecionar época" className="w-[180px]"

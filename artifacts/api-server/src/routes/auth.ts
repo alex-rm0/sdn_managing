@@ -14,7 +14,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, parsed.data.email));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.username, parsed.data.username));
   if (!user || !user.active) {
     res.status(401).json({ error: "Credenciais inválidas" });
     return;
@@ -32,7 +32,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   res.json({
     id: user.id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     role: user.role,
     active: user.active,
     assignedCategories: user.assignedCategories,
@@ -54,7 +54,7 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json({
     id: user.id,
     name: user.name,
-    email: user.email,
+    username: user.username,
     role: user.role,
     active: user.active,
     assignedCategories: user.assignedCategories,

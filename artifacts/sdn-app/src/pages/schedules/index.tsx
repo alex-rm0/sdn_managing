@@ -77,11 +77,10 @@ export default function SchedulesList() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Horários de Treino</h1>
+        <div className="flex justify-end items-center">
           <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Horário</Button>
         </div>
-        <div className="bg-card rounded-md border shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

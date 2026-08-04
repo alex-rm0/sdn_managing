@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, seasonsTable, categoryRulesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, ne } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import {
   CreateSeasonBody, UpdateSeasonBody, GetSeasonParams, UpdateSeasonParams, DeleteSeasonParams,
@@ -17,7 +17,13 @@ router.get("/seasons", requireAuth, async (_req, res): Promise<void> => {
 router.post("/seasons", requireAdmin, async (req, res): Promise<void> => {
   const parsed = CreateSeasonBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [season] = await db.insert(seasonsTable).values(parsed.data).returning();
+  const season = await db.transaction(async (tx) => {
+    if (parsed.data.active) {
+      await tx.update(seasonsTable).set({ active: false });
+    }
+    const [created] = await tx.insert(seasonsTable).values(parsed.data).returning();
+    return created;
+  });
   res.status(201).json(season);
 });
 
@@ -34,7 +40,15 @@ router.patch("/seasons/:id", requireAdmin, async (req, res): Promise<void> => {
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateSeasonBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [season] = await db.update(seasonsTable).set(parsed.data).where(eq(seasonsTable.id, params.data.id)).returning();
+
+  // Only one season can be active at a time — activating this one deactivates all others.
+  const season = await db.transaction(async (tx) => {
+    if (parsed.data.active === true) {
+      await tx.update(seasonsTable).set({ active: false }).where(ne(seasonsTable.id, params.data.id));
+    }
+    const [updated] = await tx.update(seasonsTable).set(parsed.data).where(eq(seasonsTable.id, params.data.id)).returning();
+    return updated;
+  });
   if (!season) { res.status(404).json({ error: "Época não encontrada" }); return; }
   res.json(season);
 });

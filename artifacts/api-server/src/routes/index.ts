@@ -12,8 +12,12 @@ import competitionsRouter from "./competitions";
 import financialRouter from "./financial";
 import documentsRouter from "./documents";
 import dashboardRouter from "./dashboard";
+import remindersRouter from "./reminders";
+import searchRouter from "./search";
 import meetingsRouter from "./meetings";
 import meetingsParseRouter from "./meetings-parse";
+import meetingItemsRouter from "./meeting-items";
+import noticiaRouter from "./noticia";
 import teamRouter from "./team";
 import documentUploadRouter from "./document-upload";
 
@@ -32,8 +36,12 @@ router.use(competitionsRouter);
 router.use(financialRouter);
 router.use(documentsRouter);
 router.use(dashboardRouter);
+router.use(remindersRouter);
+router.use(searchRouter);
 router.use(meetingsRouter);
 router.use(meetingsParseRouter);
+router.use(meetingItemsRouter);
+router.use(noticiaRouter);
 router.use(teamRouter);
 router.use(documentUploadRouter);
 

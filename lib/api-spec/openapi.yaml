@@ -49,7 +49,7 @@ paths:
     post:
       operationId: login
       tags: [auth]
-      summary: Login with email and password
+      summary: Login with username and password
       requestBody:
         required: true
         content:
@@ -1763,6 +1763,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardStats"
 
+  /reminders:
+    get:
+      operationId: getReminders
+      tags: [reminders]
+      responses:
+        "200":
+          description: Aggregated reminder items (overdue quotas, meetings, fleet maintenance, expiring contracts, upcoming competitions)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemindersResponse"
+
+  /search:
+    get:
+      operationId: getSearch
+      tags: [search]
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Global search across athletes, competitions, results, documents and training sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1776,22 +1805,22 @@ components:
     # ── Auth ────────────────────────────────────────────────────────────────────
     LoginInput:
       type: object
-      required: [email, password]
+      required: [username, password]
       properties:
-        email:
+        username:
           type: string
         password:
           type: string
 
     AuthUser:
       type: object
-      required: [id, name, email, role, active]
+      required: [id, name, username, role, active]
       properties:
         id:
           type: integer
         name:
           type: string
-        email:
+        username:
           type: string
         role:
           type: string
@@ -1806,13 +1835,13 @@ components:
     # ── Users ───────────────────────────────────────────────────────────────────
     User:
       type: object
-      required: [id, name, email, role, active, createdAt]
+      required: [id, name, username, role, active, createdAt]
       properties:
         id:
           type: integer
         name:
           type: string
-        email:
+        username:
           type: string
         role:
           type: string
@@ -1829,11 +1858,11 @@ components:
 
     UserInput:
       type: object
-      required: [name, email, password, role]
+      required: [name, username, password, role]
       properties:
         name:
           type: string
-        email:
+        username:
           type: string
         password:
           type: string
@@ -1850,7 +1879,7 @@ components:
       properties:
         name:
           type: string
-        email:
+        username:
           type: string
         password:
           type: ["string", "null"]
@@ -1943,7 +1972,7 @@ components:
     # ── Athletes ────────────────────────────────────────────────────────────────
     Athlete:
       type: object
-      required: [id, name, birthDate, gender, status, memberNumber, affiliationDate]
+      required: [id, name, birthDate, gender, status, memberNumber, recreational, competesAsSenior]
       properties:
         id:
           type: integer
@@ -1966,8 +1995,12 @@ components:
         category:
           type: ["string", "null"]
         affiliationDate:
-          type: string
+          type: ["string", "null"]
           format: date
+        recreational:
+          type: boolean
+        competesAsSenior:
+          type: boolean
         status:
           type: string
           enum: [ativo, inativo, suspenso]
@@ -1978,7 +2011,7 @@ components:
 
     AthleteDetail:
       type: object
-      required: [id, name, birthDate, gender, status, memberNumber, affiliationDate]
+      required: [id, name, birthDate, gender, status, memberNumber, recreational, competesAsSenior]
       properties:
         id:
           type: integer
@@ -2001,8 +2034,12 @@ components:
         category:
           type: ["string", "null"]
         affiliationDate:
-          type: string
+          type: ["string", "null"]
           format: date
+        recreational:
+          type: boolean
+        competesAsSenior:
+          type: boolean
         status:
           type: string
           enum: [ativo, inativo, suspenso]
@@ -2019,7 +2056,7 @@ components:
 
     AthleteInput:
       type: object
-      required: [name, birthDate, gender, status, affiliationDate]
+      required: [name, birthDate, gender, status]
       properties:
         name:
           type: string
@@ -2038,8 +2075,12 @@ components:
         fprNumber:
           type: ["string", "null"]
         affiliationDate:
-          type: string
+          type: ["string", "null"]
           format: date
+        recreational:
+          type: boolean
+        competesAsSenior:
+          type: boolean
         status:
           type: string
           enum: [ativo, inativo, suspenso]
@@ -2066,8 +2107,12 @@ components:
         fprNumber:
           type: ["string", "null"]
         affiliationDate:
-          type: string
+          type: ["string", "null"]
           format: date
+        recreational:
+          type: boolean
+        competesAsSenior:
+          type: boolean
         status:
           type: string
           enum: [ativo, inativo, suspenso]
@@ -3133,3 +3178,86 @@ components:
           type: integer
         fleetInMaintenanceCount:
           type: integer
+        fleetTotalCount:
+          type: integer
+        nextCompetition:
+          allOf:
+            - $ref: "#/components/schemas/Competition"
+          nullable: true
+        nextCompetitionRacesCount:
+          type: integer
+        alerts:
+          type: array
+          items:
+            $ref: "#/components/schemas/DashboardAlert"
+
+    DashboardAlert:
+      type: object
+      required: [severity, title, linkLabel, href]
+      properties:
+        severity:
+          type: string
+          enum: [danger, info, neutral]
+        title:
+          type: string
+        linkLabel:
+          type: string
+        href:
+          type: string
+
+    # ── Reminders ────────────────────────────────────────────────────────────────
+    RemindersResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReminderItem"
+
+    ReminderItem:
+      type: object
+      required: [id, category, severity, title, description, date, href]
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum: [quota, meeting, fleet, contract, competition]
+        severity:
+          type: string
+          enum: [danger, info, neutral]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        date:
+          type: ["string", "null"]
+        href:
+          type: string
+
+    # ── Search ───────────────────────────────────────────────────────────────────
+    SearchResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResultItem"
+
+    SearchResultItem:
+      type: object
+      required: [id, type, title, subtitle, href]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [athlete, competition, result, document, session]
+        title:
+          type: string
+        subtitle:
+          type: ["string", "null"]
+        href:
+          type: string

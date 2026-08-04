@@ -13,14 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Trophy, Medal, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trophy, Medal, Upload, CheckCircle, XCircle, Loader2, AlertCircle, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 // ── JSON format hint ──────────────────────────────────────────────────────────
 function JsonFormatHint({ example }: { example: string }) {
@@ -123,6 +122,7 @@ export default function ResultsList() {
   const [editing, setEditing] = useState<Result | null>(null);
   const [seasonFilter, setSeasonFilter] = useState<string>('');
   const [compFilter, setCompFilter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // ── Import state ──
   const [importOpen, setImportOpen] = useState(false);
@@ -143,6 +143,18 @@ export default function ResultsList() {
 
   const victories = results?.filter(r => r.position === 1).length ?? 0;
   const podiums = results?.filter(r => r.position && r.position <= 3).length ?? 0;
+
+  const filteredResults = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    if (!q) return results ?? [];
+    return (results ?? []).filter(r =>
+      r.athleteNames?.toLowerCase().includes(q) ||
+      r.raceName?.toLowerCase().includes(q) ||
+      r.competitionName?.toLowerCase().includes(q) ||
+      r.boatClass?.toLowerCase().includes(q) ||
+      r.escalao?.toLowerCase().includes(q)
+    );
+  }, [results, searchTerm]);
 
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
 
@@ -259,16 +271,14 @@ export default function ResultsList() {
         }
         if (!raceId) throw new Error('raceId não encontrado (forneça o campo raceId ou nome de prova correspondente)');
         await createResult({
-          data: {
-            raceId,
-            athleteNames: athleteNamesStr,
-            boatClass: p.classe ?? null,
-            escalao: p.escalao ?? null,
-            position: p.posicao ?? null,
-            time: p.tempo ?? null,
-            points: p.pontos ?? null,
-            notes: p.notas ?? null,
-          }
+          raceId,
+          athleteNames: athleteNamesStr,
+          boatClass: p.classe ?? null,
+          escalao: p.escalao ?? null,
+          position: p.posicao ?? null,
+          time: p.tempo ?? null,
+          points: p.pontos ?? null,
+          notes: p.notas ?? null,
         });
         updated[idx] = { ...updated[idx], importStatus: 'ok' };
       } catch (err: unknown) {
@@ -292,8 +302,7 @@ export default function ResultsList() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Resultados</h1>
+        <div className="flex justify-end items-center">
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => { resetImport(); setImportOpen(true); }}>
               <Upload className="w-4 h-4 mr-2" /> Importar JSON
@@ -305,28 +314,47 @@ export default function ResultsList() {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-2"><Trophy className="w-4 h-4" /> Vitórias</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{victories}</div></CardContent></Card>
-          <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-2"><Medal className="w-4 h-4" /> Pódios</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{podiums}</div></CardContent></Card>
+          <div className="bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">Vitórias</span>
+              <Trophy className="w-[15px] h-[15px] text-border" />
+            </div>
+            <span className="text-[32px] font-bold tracking-tight leading-none">{victories}</span>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">Pódios</span>
+              <Medal className="w-[15px] h-[15px] text-border" />
+            </div>
+            <span className="text-[32px] font-bold tracking-tight leading-none">{podiums}</span>
+          </div>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
-          <Select value={seasonFilter} onValueChange={v => { setSeasonFilter(v); setCompFilter(''); }}>
-            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Todas as épocas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todas as épocas</SelectItem>
-              {seasons?.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={compFilter} onValueChange={setCompFilter}>
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Todas as competições" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Todas as competições</SelectItem>
-              {competitions?.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="bg-card rounded-md border shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-border flex-wrap">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Procurar por atleta, prova, classe ou escalão..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={seasonFilter} onValueChange={v => { setSeasonFilter(v); setCompFilter(''); }}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Todas as épocas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as épocas</SelectItem>
+                {seasons?.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={compFilter} onValueChange={setCompFilter}>
+              <SelectTrigger className="w-[200px] h-[34px]"><SelectValue placeholder="Todas as competições" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Todas as competições</SelectItem>
+                {competitions?.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className="font-mono text-[10.5px] tracking-wide uppercase text-muted-foreground whitespace-nowrap">
+              {filteredResults.length} {filteredResults.length === 1 ? 'resultado' : 'resultados'}
+            </span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -342,9 +370,9 @@ export default function ResultsList() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8">A carregar...</TableCell></TableRow>
-              ) : results?.length === 0 ? (
+              ) : filteredResults.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum resultado encontrado.</TableCell></TableRow>
-              ) : results?.map(result => (
+              ) : filteredResults.map(result => (
                 <TableRow key={result.id}>
                   <TableCell>
                     <div className="font-medium text-sm">{result.competitionName || '—'}</div>

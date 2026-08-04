@@ -17,17 +17,17 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * @summary Login with email and password
+ * @summary Login with username and password
  */
 export const LoginBody = zod.object({
-  "email": zod.string(),
+  "username": zod.string(),
   "password": zod.string()
 })
 
 export const LoginResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional()
@@ -46,7 +46,7 @@ export const LogoutResponse = zod.void()
 export const GetMeResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional()
@@ -59,7 +59,7 @@ export const GetMeResponse = zod.object({
 export const ListUsersResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional(),
@@ -73,7 +73,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
  */
 export const CreateUserBody = zod.object({
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "password": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "assignedCategories": zod.array(zod.string()).optional()
@@ -82,7 +82,7 @@ export const CreateUserBody = zod.object({
 export const CreateUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional(),
@@ -97,7 +97,7 @@ export const GetUserParams = zod.object({
 export const GetUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional(),
@@ -111,7 +111,7 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   "name": zod.string().optional(),
-  "email": zod.string().optional(),
+  "username": zod.string().optional(),
   "password": zod.string().nullish(),
   "role": zod.enum(['admin', 'trainer']).optional(),
   "active": zod.boolean().optional(),
@@ -121,7 +121,7 @@ export const UpdateUserBody = zod.object({
 export const UpdateUserResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
-  "email": zod.string(),
+  "username": zod.string(),
   "role": zod.enum(['admin', 'trainer']),
   "active": zod.boolean(),
   "assignedCategories": zod.array(zod.string()).optional(),
@@ -272,7 +272,9 @@ export const ListAthletesResponseItem = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -288,7 +290,9 @@ export const CreateAthleteBody = zod.object({
   "phone": zod.string().nullish(),
   "memberNumber": zod.string().nullish(),
   "fprNumber": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish()
 })
@@ -303,7 +307,9 @@ export const CreateAthleteResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -324,7 +330,9 @@ export const GetAthleteResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish(),
@@ -386,7 +394,9 @@ export const UpdateAthleteBody = zod.object({
   "phone": zod.string().nullish(),
   "memberNumber": zod.string().nullish(),
   "fprNumber": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date().optional(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']).optional(),
   "notes": zod.string().nullish()
 })
@@ -401,7 +411,9 @@ export const UpdateAthleteResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -437,7 +449,9 @@ export const OverrideAthleteCategoryResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -467,7 +481,9 @@ export const ListCrewsResponseItem = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -502,7 +518,9 @@ export const CreateCrewResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -532,7 +550,9 @@ export const GetCrewResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -570,7 +590,9 @@ export const UpdateCrewResponse = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -978,7 +1000,9 @@ export const GetTodaySessionsResponseItem = zod.object({
   "memberNumber": zod.string().nullable(),
   "fprNumber": zod.string().nullish(),
   "category": zod.string().nullish(),
-  "affiliationDate": zod.coerce.date(),
+  "affiliationDate": zod.coerce.date().nullish(),
+  "recreational": zod.boolean().optional(),
+  "competesAsSenior": zod.boolean().optional(),
   "status": zod.enum(['ativo', 'inativo', 'suspenso']),
   "notes": zod.string().nullish(),
   "categoryOverride": zod.string().nullish()
@@ -1921,6 +1945,21 @@ export const GetDashboardResponse = zod.object({
 })
 
 
+// ── Search ───────────────────────────────────────────────────────────────────
+
+export const GetSearchQueryParams = zod.object({
+  "q": zod.string().optional()
+})
+
+export const GetSearchResponse = zod.object({
+  "items": zod.array(zod.object({
+    "id": zod.string(),
+    "type": zod.enum(['athlete', 'competition', 'result', 'document', 'session']),
+    "title": zod.string(),
+    "subtitle": zod.string().nullable(),
+    "href": zod.string()
+  }))
+})
 
 
 // ── Meeting Minutes ───────────────────────────────────────────────────────────

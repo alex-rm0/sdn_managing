@@ -89,12 +89,7 @@ export default function TrainingsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Treinos de Hoje</h1>
-          <p className="text-muted-foreground">{new Date().toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-        </div>
-      </div>
+      <p className="text-muted-foreground">{new Date().toLocaleDateString('pt-PT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
       {sessions?.length === 0 ? (
         <Card className="bg-muted/30 border-dashed">

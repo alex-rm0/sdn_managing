@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListEquipment, useCreateEquipment, useUpdateEquipment, useDeleteEquipment,
@@ -16,9 +16,10 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Upload, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Upload, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obrigatório'),
@@ -72,6 +73,9 @@ export default function EquipmentList() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Equipment | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
@@ -84,6 +88,24 @@ export default function EquipmentList() {
 
   const { data: equipment, isLoading } = useListEquipment();
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
+
+  const categoryOptions = useMemo(() =>
+    Array.from(new Set((equipment ?? []).map(e => e.category).filter(Boolean))).sort(),
+    [equipment]
+  );
+  const statusOptions = useMemo(() =>
+    Array.from(new Set((equipment ?? []).map(e => e.status).filter(Boolean))).sort(),
+    [equipment]
+  );
+  const filteredEquipment = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    return (equipment ?? []).filter(item => {
+      const matchesSearch = !q || item.name.toLowerCase().includes(q) || item.category.toLowerCase().includes(q) || (item.assignedTo?.toLowerCase().includes(q));
+      const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+      const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+  }, [equipment, searchTerm, categoryFilter, statusFilter]);
 
   useEffect(() => {
     if (open) form.reset(editing
@@ -172,7 +194,31 @@ export default function EquipmentList() {
           </Button>
         </div>
 
-        <div className="bg-card rounded-md border shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-border flex-wrap">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Procurar por nome, categoria ou responsável..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as categorias</SelectItem>
+                {categoryOptions.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os estados</SelectItem>
+                {statusOptions.map(st => <SelectItem key={st} value={st}>{st.replace(/_/g, ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className="font-mono text-[10.5px] tracking-wide uppercase text-muted-foreground whitespace-nowrap">
+              {filteredEquipment.length} {filteredEquipment.length === 1 ? 'item' : 'itens'}
+            </span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -187,9 +233,9 @@ export default function EquipmentList() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">A carregar...</TableCell></TableRow>
-              ) : equipment?.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum equipamento registado.</TableCell></TableRow>
-              ) : equipment?.map(item => (
+              ) : filteredEquipment.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum equipamento encontrado.</TableCell></TableRow>
+              ) : filteredEquipment.map(item => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>

@@ -10,6 +10,17 @@ function computeCategory(birthDate: string, rules: Array<{ name: string; minAge:
   }
   return null;
 }
+
+function resolveCategory(
+  athlete: { birthDate: string; recreational: boolean; competesAsSenior: boolean },
+  rules: Array<{ name: string; minAge: number; maxAge: number | null }>,
+  refYear?: number,
+): string | null {
+  if (athlete.recreational) return "Lazer";
+  const computed = computeCategory(athlete.birthDate, rules, refYear);
+  if (computed === "Veterano" && athlete.competesAsSenior) return "Sénior";
+  return computed;
+}
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import {
   CreateFinancialMovementBody, UpdateFinancialMovementBody, GetFinancialMovementParams, UpdateFinancialMovementParams, DeleteFinancialMovementParams, ListFinancialMovementsQueryParams,
@@ -145,15 +156,18 @@ type CategoryRule = { name: string; minAge: number; maxAge: number | null };
 async function enrichQuota(
   quota: typeof quotasTable.$inferSelect,
   categoryRules: CategoryRule[],
-  athleteCache: Map<number, { name: string; birthDate: string }>,
-  seasonCache: Map<number, string>,
+  athleteCache: Map<number, { name: string; birthDate: string; recreational: boolean; competesAsSenior: boolean }>,
+  seasonCache: Map<number, { name: string; endDate: string }>,
 ) {
   const athlete = athleteCache.get(quota.athleteId);
   const athleteName = athlete?.name ?? null;
+  const season = seasonCache.get(quota.seasonId);
+  // Category reflects the quota's own season, not whichever season is active now.
+  const refYear = season ? new Date(season.endDate).getFullYear() : undefined;
   const athleteCategory = athlete?.birthDate
-    ? computeCategory(athlete.birthDate, categoryRules)
+    ? resolveCategory(athlete, categoryRules, refYear)
     : null;
-  const seasonName = seasonCache.get(quota.seasonId) ?? null;
+  const seasonName = season?.name ?? null;
   const pmts = await db.select().from(paymentsTable).where(eq(paymentsTable.quotaId, quota.id));
   const amountDue = Number(quota.amountDue);
   const amountPaid = pmts.reduce((sum, p) => sum + Number(p.amount), 0);
@@ -177,11 +191,11 @@ async function enrichQuota(
 async function loadCaches(athleteIds: number[], seasonIds: number[]) {
   const [rules, athletes, seasons] = await Promise.all([
     db.select().from(categoryRulesTable).orderBy(categoryRulesTable.minAge),
-    athleteIds.length ? db.select({ id: athletesTable.id, name: athletesTable.name, birthDate: athletesTable.birthDate }).from(athletesTable) : Promise.resolve([]),
+    athleteIds.length ? db.select({ id: athletesTable.id, name: athletesTable.name, birthDate: athletesTable.birthDate, recreational: athletesTable.recreational, competesAsSenior: athletesTable.competesAsSenior }).from(athletesTable) : Promise.resolve([]),
     seasonIds.length ? db.select().from(seasonsTable) : Promise.resolve([]),
   ]);
-  const athleteCache = new Map(athletes.map(a => [a.id, { name: a.name, birthDate: String(a.birthDate) }]));
-  const seasonCache = new Map(seasons.map(s => [s.id, s.name]));
+  const athleteCache = new Map(athletes.map(a => [a.id, { name: a.name, birthDate: String(a.birthDate), recreational: a.recreational, competesAsSenior: a.competesAsSenior }]));
+  const seasonCache = new Map(seasons.map(s => [s.id, { name: s.name, endDate: String(s.endDate) }]));
   return { rules, athleteCache, seasonCache };
 }
 

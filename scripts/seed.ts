@@ -68,12 +68,14 @@ async function seed() {
 
   // Category Rules
   await db.insert(categoryRulesTable).values([
-    { name: "Jovem", minAge: 12, maxAge: 14, description: "12-14 anos" },
+    { name: "Benjamim", minAge: 0, maxAge: 10, description: "0-10 anos" },
+    { name: "Infantil", minAge: 11, maxAge: 12, description: "11-12 anos" },
+    { name: "Iniciado", minAge: 13, maxAge: 14, description: "13-14 anos" },
     { name: "Juvenil", minAge: 15, maxAge: 16, description: "15-16 anos" },
     { name: "Júnior", minAge: 17, maxAge: 18, description: "17-18 anos" },
     { name: "Sub-23", minAge: 19, maxAge: 22, description: "19-22 anos" },
     { name: "Sénior", minAge: 23, maxAge: 35, description: "23-35 anos" },
-    { name: "Master", minAge: 36, maxAge: null, description: "36+ anos" },
+    { name: "Veterano", minAge: 36, maxAge: null, description: "36+ anos" },
   ]);
 
   console.log("✅ Categorias criadas");

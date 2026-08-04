@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext } from 'react';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
 import type { AuthUser } from '@workspace/api-client-react/src/generated/api.schemas';
 import { useLocation } from 'wouter';
@@ -14,7 +14,6 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
   const [, setLocation] = useLocation();
 
   const { data, isLoading, isFetching, refetch, isError } = useGetMe({
@@ -23,19 +22,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   });
 
-  useEffect(() => {
-    if (data) {
-      setUser(data);
-    }
-    if (isError) {
-      setUser(null);
-    }
-  }, [data, isError]);
+  // Derive `user` directly from the query result (not a useState+useEffect
+  // mirror) so it updates in the same render as isLoading/isFetching — a
+  // one-tick lag here previously let ProtectedRoute see isLoading=false with
+  // a stale null user and bounce straight back to /login after a valid login.
+  const user = isError ? null : (data ?? null);
 
   const { mutate: performLogout } = useLogout({
     mutation: {
-      onSuccess: () => {
-        setUser(null);
+      onSuccess: async () => {
+        await refetch();
         setLocation('/login');
       }
     }

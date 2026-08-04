@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListCompetitions, useCreateCompetition, useUpdateCompetition, useDeleteCompetition, getListCompetitionsQueryKey,
-  useListRaces, useCreateRace, useUpdateRace, useDeleteRace,
+  useListRaces, useCreateRace, useUpdateRace, useDeleteRace, createRace,
   useListSeasons,
 } from '@workspace/api-client-react';
 import type { Competition, Race } from '@workspace/api-client-react';
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, ChevronDown, ChevronRight, Upload, Loader2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Upload, Loader2, Search } from 'lucide-react';
 
 interface ImportRace {
   name: string;
@@ -153,9 +153,20 @@ export default function CompetitionsList() {
   const [importPreview, setImportPreview] = useState<ImportComp[] | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [seasonFilter, setSeasonFilter] = useState('all');
 
   const { data: competitions, isLoading } = useListCompetitions();
   const { data: seasons } = useListSeasons();
+
+  const filteredCompetitions = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    return (competitions ?? []).filter(c => {
+      const matchesSearch = !q || c.name.toLowerCase().includes(q) || (c.location?.toLowerCase().includes(q)) || (c.organizer?.toLowerCase().includes(q));
+      const matchesSeason = seasonFilter === 'all' || String(c.seasonId) === seasonFilter;
+      return matchesSearch && matchesSeason;
+    });
+  }, [competitions, searchTerm, seasonFilter]);
 
   const form = useForm<z.infer<typeof compSchema>>({ resolver: zodResolver(compSchema), defaultValues: { name: '', seasonId: 0, startDate: '', endDate: '', location: '', organizer: '' } });
 
@@ -219,13 +230,13 @@ export default function CompetitionsList() {
         }});
         if (races?.length) {
           for (const race of races) {
-            await createRaceMutation.mutateAsync({ data: {
+            await createRace({
               name: race.name,
               competitionId: (newComp as any).id,
               modality: race.modality ?? null,
               distance: race.distance ?? null,
               category: race.category ?? null,
-            }});
+            });
           }
         }
         created++;
@@ -244,8 +255,7 @@ export default function CompetitionsList() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">Competições</h1>
+        <div className="flex justify-end items-center gap-3">
           <div className="flex gap-2">
             <input ref={jsonInputRef} type="file" accept=".json" className="hidden" onChange={handleJsonFile} />
             <Button variant="outline" size="sm" onClick={() => jsonInputRef.current?.click()}>
@@ -256,7 +266,24 @@ export default function CompetitionsList() {
             </Button>
           </div>
         </div>
-        <div className="bg-card rounded-md border shadow-sm overflow-hidden">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-border flex-wrap">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Procurar por nome, local ou organizador..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={seasonFilter} onValueChange={setSeasonFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Época" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as épocas</SelectItem>
+                {seasons?.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className="font-mono text-[10.5px] tracking-wide uppercase text-muted-foreground whitespace-nowrap">
+              {filteredCompetitions.length} {filteredCompetitions.length === 1 ? 'competição' : 'competições'}
+            </span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -271,9 +298,9 @@ export default function CompetitionsList() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8">A carregar...</TableCell></TableRow>
-              ) : competitions?.length === 0 ? (
+              ) : filteredCompetitions.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhuma competição registada.</TableCell></TableRow>
-              ) : competitions?.map(comp => (
+              ) : filteredCompetitions.map(comp => (
                 <>
                   <TableRow key={comp.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell onClick={() => setExpanded(expanded === comp.id ? null : comp.id)}>

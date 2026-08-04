@@ -42,4 +42,19 @@ app.use("/api/uploads", express.static(uploadsDir));
 
 app.use("/api", router);
 
+// Serve the built frontend (artifacts/sdn-app/dist/public) so a single
+// service can host both the API and the web app. Only registered when that
+// build actually exists, so local dev (frontend served separately by Vite)
+// is unaffected.
+const frontendDist = path.resolve(import.meta.dirname, "../../sdn-app/dist/public");
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  // Express 5's router (path-to-regexp v8) rejects a bare "*" path pattern,
+  // so the SPA fallback is plain middleware instead of a routed GET "*".
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || req.path.startsWith("/api")) { next(); return; }
+    res.sendFile("index.html", { root: frontendDist });
+  });
+}
+
 export default app;

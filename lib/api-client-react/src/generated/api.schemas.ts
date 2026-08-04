@@ -10,7 +10,7 @@ export interface HealthStatus {
 }
 
 export interface LoginInput {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -25,7 +25,7 @@ export const AuthUserRole = {
 export interface AuthUser {
   id: number;
   name: string;
-  email: string;
+  username: string;
   role: AuthUserRole;
   active: boolean;
   assignedCategories?: string[];
@@ -42,7 +42,7 @@ export const UserRole = {
 export interface User {
   id: number;
   name: string;
-  email: string;
+  username: string;
   role: UserRole;
   active: boolean;
   assignedCategories?: string[];
@@ -59,7 +59,7 @@ export const UserInputRole = {
 
 export interface UserInput {
   name: string;
-  email: string;
+  username: string;
   password: string;
   role: UserInputRole;
   assignedCategories?: string[];
@@ -75,7 +75,7 @@ export const UserUpdateRole = {
 
 export interface UserUpdate {
   name?: string;
-  email?: string;
+  username?: string;
   /** @nullable */
   password?: string | null;
   role?: UserUpdateRole;
@@ -156,7 +156,10 @@ export interface Athlete {
   fprNumber?: string | null;
   /** @nullable */
   category?: string | null;
-  affiliationDate: string;
+  /** @nullable */
+  affiliationDate?: string | null;
+  recreational: boolean;
+  competesAsSenior: boolean;
   status: AthleteStatus;
   /** @nullable */
   notes?: string | null;
@@ -294,7 +297,10 @@ export interface AthleteDetail {
   fprNumber?: string | null;
   /** @nullable */
   category?: string | null;
-  affiliationDate: string;
+  /** @nullable */
+  affiliationDate?: string | null;
+  recreational: boolean;
+  competesAsSenior: boolean;
   status: AthleteDetailStatus;
   /** @nullable */
   notes?: string | null;
@@ -333,7 +339,10 @@ export interface AthleteInput {
   memberNumber?: string | null;
   /** @nullable */
   fprNumber?: string | null;
-  affiliationDate: string;
+  /** @nullable */
+  affiliationDate?: string | null;
+  recreational?: boolean;
+  competesAsSenior?: boolean;
   status: AthleteInputStatus;
   /** @nullable */
   notes?: string | null;
@@ -368,7 +377,10 @@ export interface AthleteUpdate {
   memberNumber?: string | null;
   /** @nullable */
   fprNumber?: string | null;
-  affiliationDate?: string;
+  /** @nullable */
+  affiliationDate?: string | null;
+  recreational?: boolean;
+  competesAsSenior?: boolean;
   status?: AthleteUpdateStatus;
   /** @nullable */
   notes?: string | null;
@@ -1271,7 +1283,92 @@ export interface DashboardStats {
   totalVictories?: number;
   fleetAvailableCount?: number;
   fleetInMaintenanceCount?: number;
+  fleetTotalCount?: number;
+  /** @nullable */
+  nextCompetition?: Competition | null;
+  nextCompetitionRacesCount?: number;
+  alerts?: DashboardAlert[];
 }
+
+export type DashboardAlertSeverity = typeof DashboardAlertSeverity[keyof typeof DashboardAlertSeverity];
+
+
+export const DashboardAlertSeverity = {
+  danger: 'danger',
+  info: 'info',
+  neutral: 'neutral',
+} as const;
+
+export interface DashboardAlert {
+  severity: DashboardAlertSeverity;
+  title: string;
+  linkLabel: string;
+  href: string;
+}
+
+export type ReminderItemCategory = typeof ReminderItemCategory[keyof typeof ReminderItemCategory];
+
+
+export const ReminderItemCategory = {
+  quota: 'quota',
+  meeting: 'meeting',
+  fleet: 'fleet',
+  contract: 'contract',
+  competition: 'competition',
+} as const;
+
+export type ReminderItemSeverity = typeof ReminderItemSeverity[keyof typeof ReminderItemSeverity];
+
+
+export const ReminderItemSeverity = {
+  danger: 'danger',
+  info: 'info',
+  neutral: 'neutral',
+} as const;
+
+export interface ReminderItem {
+  id: string;
+  category: ReminderItemCategory;
+  severity: ReminderItemSeverity;
+  title: string;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  date: string | null;
+  href: string;
+}
+
+export interface RemindersResponse {
+  items: ReminderItem[];
+}
+
+export type SearchResultItemType = typeof SearchResultItemType[keyof typeof SearchResultItemType];
+
+
+export const SearchResultItemType = {
+  athlete: 'athlete',
+  competition: 'competition',
+  result: 'result',
+  document: 'document',
+  session: 'session',
+} as const;
+
+export interface SearchResultItem {
+  id: string;
+  type: SearchResultItemType;
+  title: string;
+  /** @nullable */
+  subtitle: string | null;
+  href: string;
+}
+
+export interface SearchResponse {
+  items: SearchResultItem[];
+}
+
+export type GetSearchParams = {
+  q?: string;
+};
 
 export type ListAthletesParams = {
 status?: string;
@@ -1392,6 +1489,8 @@ export interface MeetingMinutes {
   notes?: string | null;
   status: MeetingStatus;
   createdAt: string;
+  /** @nullable */
+  editingBy?: string | null;
 }
 
 export interface MeetingMinutesInput {

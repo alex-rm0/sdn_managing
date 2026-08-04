@@ -216,8 +216,7 @@ export default function EquipaPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Equipa</h1>
+        <div className="flex justify-end items-center">
           <Button size="sm" onClick={openCreate}>
             <Plus className="w-4 h-4 mr-2" /> Adicionar
           </Button>

@@ -1,7 +1,6 @@
 import { useGetDashboard } from '@workspace/api-client-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Wallet, Receipt, Sailboat, Dumbbell, BarChart3 } from 'lucide-react';
+import { Users, Wallet, Receipt, Sailboat, Dumbbell } from 'lucide-react';
 
 export default function Estatisticas() {
   const { data: stats, isLoading } = useGetDashboard();
@@ -11,118 +10,99 @@ export default function Estatisticas() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <BarChart3 className="w-6 h-6 text-muted-foreground" />
-        <h1 className="text-3xl font-bold tracking-tight">Estatísticas</h1>
+    <div className="flex flex-col gap-[22px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">Atletas ativos</span>
+            <Users className="w-[15px] h-[15px] text-border" />
+          </div>
+          <span className="text-[32px] font-bold tracking-tight leading-none">{stats.activeAthletes}</span>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">Balanço mensal</span>
+            <Wallet className="w-[15px] h-[15px] text-border" />
+          </div>
+          <span className={`text-[32px] font-bold tracking-tight leading-none ${stats.monthlyBalance >= 0 ? 'text-brand-success' : 'text-destructive'}`}>
+            {stats.monthlyBalance.toFixed(2)} €
+          </span>
+          <p className="font-mono text-[10.5px] text-muted-foreground">
+            +{(stats.monthlyRevenue ?? 0).toFixed(2)} € / −{(stats.monthlyExpenses ?? 0).toFixed(2)} €
+          </p>
+        </div>
+
+        <div className={`bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5 ${(stats.overdueQuotasCount ?? 0) > 0 ? 'border-l-[5px] border-l-brand-danger' : ''}`}>
+          <div className="flex items-center justify-between">
+            <span className={`font-mono text-[10px] tracking-wider uppercase ${(stats.overdueQuotasCount ?? 0) > 0 ? 'text-brand-danger font-semibold' : 'text-muted-foreground'}`}>Quotas em atraso</span>
+            <Receipt className="w-[15px] h-[15px] text-border" />
+          </div>
+          <span className={`text-[32px] font-bold tracking-tight leading-none ${(stats.overdueQuotasCount ?? 0) > 0 ? 'text-brand-danger' : ''}`}>
+            {stats.overdueQuotasCount ?? 0}
+          </span>
+          <p className="font-mono text-[10.5px] text-muted-foreground">
+            {(stats.overdueQuotasAmount ?? 0).toFixed(2)} € em dívida
+          </p>
+        </div>
+
+        <div className="bg-card border border-border rounded-2xl p-[18px] flex flex-col gap-3.5">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">Frota disponível</span>
+            <Sailboat className="w-[15px] h-[15px] text-border" />
+          </div>
+          <span className="text-[32px] font-bold tracking-tight leading-none">{stats.fleetAvailableCount}</span>
+          <p className="font-mono text-[10.5px] text-muted-foreground">
+            {stats.fleetInMaintenanceCount} em manutenção
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Atletas Ativos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.activeAthletes}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balanço Mensal</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.monthlyBalance >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-              {stats.monthlyBalance.toFixed(2)} €
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+          <h2 className="text-[15px] font-bold tracking-tight flex items-center gap-2">
+            <Dumbbell className="w-4 h-4 text-brand-cyan-dark" /> Próximos treinos
+          </h2>
+          {stats.upcomingSessions?.length ? (
+            <div className="flex flex-col divide-y divide-border">
+              {stats.upcomingSessions.map(session => (
+                <div key={session.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="font-medium text-sm">{session.groupCategory}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {session.date} · {session.startTime} – {session.endTime}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="capitalize">{session.trainingType}</Badge>
+                </div>
+              ))}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              +{stats.monthlyRevenue.toFixed(2)} € / −{stats.monthlyExpenses.toFixed(2)} €
-            </p>
-          </CardContent>
-        </Card>
+          ) : (
+            <p className="text-sm text-muted-foreground">Não há treinos agendados brevemente.</p>
+          )}
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quotas em Atraso</CardTitle>
-            <Receipt className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{stats.overdueQuotasCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.overdueQuotasAmount.toFixed(2)} € em dívida
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Frota Disponível</CardTitle>
-            <Sailboat className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.fleetAvailableCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.fleetInMaintenanceCount} em manutenção
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Dumbbell className="h-5 w-5" /> Próximos Treinos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.upcomingSessions?.length ? (
-              <div className="space-y-4">
-                {stats.upcomingSessions.map(session => (
-                  <div key={session.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                    <div>
-                      <p className="font-medium text-sm">{session.groupCategory}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {session.date} · {session.startTime} – {session.endTime}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="capitalize">{session.trainingType}</Badge>
+        <div className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4">
+          <h2 className="text-[15px] font-bold tracking-tight">Últimos resultados</h2>
+          {stats.recentResults?.length ? (
+            <div className="flex flex-col divide-y divide-border">
+              {stats.recentResults.map(result => (
+                <div key={result.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div>
+                    <p className="font-medium text-sm">{result.athleteNames ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{result.boatClass} {result.escalao && `· ${result.escalao}`}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Não há treinos agendados brevemente.</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Últimos Resultados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.recentResults?.length ? (
-              <div className="space-y-4">
-                {stats.recentResults.map(result => (
-                  <div key={result.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                    <div>
-                      <p className="font-medium text-sm">{result.athleteName || result.crewName}</p>
-                      <p className="text-xs text-muted-foreground">{result.competitionName} — {result.raceName}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-sm">{result.position}º lugar</div>
-                      {result.time && <div className="text-xs text-muted-foreground font-mono">{result.time}</div>}
-                    </div>
+                  <div className="text-right">
+                    {result.position && <div className="font-bold text-sm">{result.position}º lugar</div>}
+                    {result.time && <div className="text-xs text-muted-foreground font-mono">{result.time}</div>}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sem resultados recentes.</p>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem resultados recentes.</p>
+          )}
+        </div>
       </div>
     </div>
   );

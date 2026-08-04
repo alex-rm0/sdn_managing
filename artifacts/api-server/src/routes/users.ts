@@ -13,7 +13,7 @@ router.get("/users", requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select({
     id: usersTable.id,
     name: usersTable.name,
-    email: usersTable.email,
+    username: usersTable.username,
     role: usersTable.role,
     active: usersTable.active,
     assignedCategories: usersTable.assignedCategories,
@@ -37,7 +37,7 @@ router.post("/users", requireAdmin, async (req, res): Promise<void> => {
   }).returning({
     id: usersTable.id,
     name: usersTable.name,
-    email: usersTable.email,
+    username: usersTable.username,
     role: usersTable.role,
     active: usersTable.active,
     assignedCategories: usersTable.assignedCategories,
@@ -50,7 +50,7 @@ router.get("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   const params = GetUserParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const [user] = await db.select({
-    id: usersTable.id, name: usersTable.name, email: usersTable.email,
+    id: usersTable.id, name: usersTable.name, username: usersTable.username,
     role: usersTable.role, active: usersTable.active, assignedCategories: usersTable.assignedCategories,
     createdAt: usersTable.createdAt,
   }).from(usersTable).where(eq(usersTable.id, params.data.id));
@@ -70,7 +70,7 @@ router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   }
   const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, params.data.id))
     .returning({
-      id: usersTable.id, name: usersTable.name, email: usersTable.email,
+      id: usersTable.id, name: usersTable.name, username: usersTable.username,
       role: usersTable.role, active: usersTable.active, assignedCategories: usersTable.assignedCategories,
       createdAt: usersTable.createdAt,
     });

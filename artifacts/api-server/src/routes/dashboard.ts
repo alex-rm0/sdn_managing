@@ -1,6 +1,10 @@
 import { Router, type IRouter } from "express";
-import { db, athletesTable, trainingSessionsTable, resultsTable, racesTable, competitionsTable, financialMovementsTable, quotasTable, paymentsTable, fleetItemsTable } from "@workspace/db";
-import { eq, and, inArray, gte } from "drizzle-orm";
+import {
+  db, athletesTable, trainingSessionsTable, attendanceRecordsTable, resultsTable, racesTable,
+  competitionsTable, financialMovementsTable, quotasTable, paymentsTable, fleetItemsTable,
+  meetingMinutesTable, seasonsTable, usersTable,
+} from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/auth";
 import { GetDashboardQueryParams } from "@workspace/api-zod";
 
@@ -10,16 +14,24 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const query = GetDashboardQueryParams.safeParse(req.query);
   if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
 
-  const [activeAthletes, allResultsCount, upcomingSessions, allFleet] = await Promise.all([
+  const [activeAthletes, allResultsCount, allSessions, allFleet, allUsers, allSeasons] = await Promise.all([
     db.select().from(athletesTable).where(eq(athletesTable.status, "ativo")),
     db.select().from(resultsTable),
     db.select().from(trainingSessionsTable).orderBy(trainingSessionsTable.date),
     db.select().from(fleetItemsTable),
+    db.select().from(usersTable),
+    db.select().from(seasonsTable),
   ]);
 
   const today = new Date().toISOString().split("T")[0];
-  const todaySessions = upcomingSessions.filter(s => s.date >= today).slice(0, 5).map(s => ({
-    ...s, attendanceCount: null, trainerName: null
+  const trainerNameById = new Map(allUsers.map(u => [u.id, u.name]));
+
+  const todaySessionsRaw = allSessions.filter(s => s.date >= today).slice(0, 5);
+  const allAttendance = await db.select().from(attendanceRecordsTable);
+  const todaySessions = todaySessionsRaw.map(s => ({
+    ...s,
+    trainerName: s.trainerId ? trainerNameById.get(s.trainerId) ?? null : null,
+    attendanceCount: allAttendance.filter(a => a.sessionId === s.id).length,
   }));
 
   // Recent results
@@ -59,9 +71,53 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
   const fleetAvailable = allFleet.filter(f => f.status === "ativo").length;
   const fleetMaintenance = allFleet.filter(f => f.status === "manutencao" || f.status === "avariado").length;
 
+  // Next upcoming competition
+  const allCompetitions = await db.select().from(competitionsTable);
+  const upcomingCompetitions = allCompetitions
+    .filter(c => c.startDate >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const nextCompetitionRow = upcomingCompetitions[0] ?? null;
+  let nextCompetitionRacesCount = 0;
+  if (nextCompetitionRow) {
+    const allRaces = await db.select().from(racesTable).where(eq(racesTable.competitionId, nextCompetitionRow.id));
+    nextCompetitionRacesCount = allRaces.length;
+  }
+  const activeSeason = allSeasons.find(s => s.active) ?? null;
+
+  // Alerts — only surfacing what's backed by real data (no fabricated stats)
+  const alerts: Array<{ severity: "danger" | "info" | "neutral"; title: string; linkLabel: string; href: string }> = [];
+  if (overdueCount > 0) {
+    alerts.push({
+      severity: "danger",
+      title: `${overdueCount} ${overdueCount === 1 ? "atleta" : "atletas"} com quotas em atraso`,
+      linkLabel: "Ver quotas",
+      href: "/quotas",
+    });
+  }
+  const upcomingMeeting = (await db.select().from(meetingMinutesTable))
+    .filter(m => m.status !== "finalizada" && m.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+  if (upcomingMeeting) {
+    const meetingDate = new Date(upcomingMeeting.date).toLocaleDateString("pt-PT", { weekday: "long", day: "numeric", month: "long" });
+    alerts.push({
+      severity: "info",
+      title: `Reunião de direção · ${meetingDate}`,
+      linkLabel: "Abrir agenda",
+      href: "/reunioes",
+    });
+  }
+  if (fleetMaintenance > 0) {
+    alerts.push({
+      severity: "neutral",
+      title: `${fleetMaintenance} ${fleetMaintenance === 1 ? "item" : "itens"} de frota/equipamento em manutenção`,
+      linkLabel: "Ver inventário",
+      href: "/inventario",
+    });
+  }
+
   res.json({
-    seasonId: query.data.seasonId ?? null,
-    seasonName: null,
+    seasonId: query.data.seasonId ?? activeSeason?.id ?? null,
+    seasonName: activeSeason?.name ?? null,
     activeAthletes: activeAthletes.length,
     totalResults: allResultsCount.length,
     upcomingSessions: todaySessions,
@@ -75,6 +131,10 @@ router.get("/dashboard", requireAuth, async (req, res): Promise<void> => {
     totalVictories: victories,
     fleetAvailableCount: fleetAvailable,
     fleetInMaintenanceCount: fleetMaintenance,
+    fleetTotalCount: allFleet.length,
+    nextCompetition: nextCompetitionRow,
+    nextCompetitionRacesCount,
+    alerts,
   });
 });
 

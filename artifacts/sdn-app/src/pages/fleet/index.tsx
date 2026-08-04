@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useListFleet, useCreateFleetItem, useUpdateFleetItem, useDeleteFleetItem,
@@ -19,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Euro, Upload, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Euro, Upload, CheckCircle, XCircle, Loader2, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 // ── Category config ───────────────────────────────────────────────────────────
 type Category = 'embarcacoes' | 'viaturas';
@@ -118,6 +118,9 @@ export default function FleetList({ category }: FleetListProps) {
   const [editing, setEditing] = useState<FleetItem | null>(null);
   const [valOpen, setValOpen] = useState(false);
   const [valItemId, setValItemId] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
@@ -130,6 +133,15 @@ export default function FleetList({ category }: FleetListProps) {
 
   const { data: allFleet, isLoading } = useListFleet();
   const fleet = allFleet ? filterByCategory(allFleet, category) : undefined;
+  const filteredFleet = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    return (fleet ?? []).filter(item => {
+      const matchesSearch = !q || item.identifier.toLowerCase().includes(q) || (item.brand?.toLowerCase().includes(q)) || (item.subtype?.toLowerCase().includes(q));
+      const matchesType = typeFilter === 'all' || item.type === typeFilter;
+      const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+      return matchesSearch && matchesType && matchesStatus;
+    });
+  }, [fleet, searchTerm, typeFilter, statusFilter]);
 
   const defaultFleet = { identifier: '', type: categoryTypes(category)[0] as z.infer<typeof fleetSchema>['type'], subtype: '', brand: '', year: undefined as number | undefined, status: 'ativo' as const, breakdownDescription: '', repairMaterials: '' };
 
@@ -236,7 +248,31 @@ export default function FleetList({ category }: FleetListProps) {
           </Button>
         </div>
 
-        <div className="bg-card rounded-md border shadow-sm">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2.5 px-[18px] py-3.5 border-b border-border flex-wrap">
+            <div className="relative w-[280px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input placeholder="Procurar por identificador, marca ou classe..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                {availableTypes.map(t => <SelectItem key={t} value={t}>{typeLabels[t]}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[160px] h-[34px]"><SelectValue placeholder="Estado" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os estados</SelectItem>
+                {Object.entries(statusLabels).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <span className="font-mono text-[10.5px] tracking-wide uppercase text-muted-foreground whitespace-nowrap">
+              {filteredFleet.length} {filteredFleet.length === 1 ? 'registo' : 'registos'}
+            </span>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -252,9 +288,9 @@ export default function FleetList({ category }: FleetListProps) {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={isBoat ? 7 : 6} className="text-center py-8">A carregar...</TableCell></TableRow>
-              ) : fleet?.length === 0 ? (
+              ) : filteredFleet.length === 0 ? (
                 <TableRow><TableCell colSpan={isBoat ? 7 : 6} className="text-center py-8 text-muted-foreground">Nenhum registo encontrado.</TableCell></TableRow>
-              ) : fleet?.map(item => (
+              ) : filteredFleet.map(item => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.identifier}</TableCell>
                   <TableCell>{typeLabels[item.type] || item.type}</TableCell>

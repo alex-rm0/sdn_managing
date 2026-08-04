@@ -5,8 +5,24 @@
  * SDN/AAC Internal Management API
  * OpenAPI spec version: 0.1.0
  */
+import type { Competition } from './competition';
 import type { Result } from './result';
 import type { TrainingSession } from './trainingSession';
+
+export interface DashboardAlert {
+  severity: DashboardAlertSeverity;
+  title: string;
+  linkLabel: string;
+  href: string;
+}
+
+export type DashboardAlertSeverity = typeof DashboardAlertSeverity[keyof typeof DashboardAlertSeverity];
+
+export const DashboardAlertSeverity = {
+  danger: 'danger',
+  info: 'info',
+  neutral: 'neutral',
+} as const;
 
 export interface DashboardStats {
   /** @nullable */
@@ -14,6 +30,7 @@ export interface DashboardStats {
   /** @nullable */
   seasonName?: string | null;
   activeAthletes: number;
+  totalResults?: number;
   totalCrews?: number;
   upcomingSessions: TrainingSession[];
   recentResults?: Result[];
@@ -26,4 +43,9 @@ export interface DashboardStats {
   totalVictories?: number;
   fleetAvailableCount?: number;
   fleetInMaintenanceCount?: number;
+  fleetTotalCount?: number;
+  /** @nullable */
+  nextCompetition?: Competition | null;
+  nextCompetitionRacesCount?: number;
+  alerts?: DashboardAlert[];
 }

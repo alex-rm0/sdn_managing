@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
+import { useListSeasons } from '@workspace/api-client-react';
 import { cn } from '@/lib/utils';
 import {
   Home,
@@ -9,6 +10,7 @@ import {
   CalendarDays,
   Trophy,
   Medal,
+  Sparkles,
   Wallet,
   Receipt,
   Package,
@@ -19,8 +21,10 @@ import {
   LogOut,
   BookOpen,
   UserSquare2,
+  Bell,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Header } from '@/components/Header';
+import { SearchPalette } from '@/components/SearchPalette';
 
 interface NavItem {
   href: string;
@@ -38,6 +42,7 @@ const adminGroups: NavGroup[] = [
     label: 'Principal',
     items: [
       { href: '/',            label: 'Início',       icon: Home },
+      { href: '/lembretes',   label: 'Lembretes',    icon: Bell },
       { href: '/estatisticas',label: 'Estatísticas', icon: BarChart3 },
     ],
   },
@@ -54,6 +59,7 @@ const adminGroups: NavGroup[] = [
       { href: '/atletas',     label: 'Atletas',     icon: Users },
       { href: '/competicoes', label: 'Competições', icon: Trophy },
       { href: '/resultados',  label: 'Resultados',  icon: Medal },
+      { href: '/noticia-ia',  label: 'Notícia IA',  icon: Sparkles },
     ],
   },
   {
@@ -93,6 +99,20 @@ const trainerGroups: NavGroup[] = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isLoading, logout } = useAuth();
   const [location] = useLocation();
+  const { data: seasons = [] } = useListSeasons();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isShortcut = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
+      if (isShortcut) {
+        e.preventDefault();
+        setSearchOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">A carregar...</div>;
@@ -100,84 +120,99 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   const groups = user.role === 'admin' ? adminGroups : trainerGroups;
+  const activeSeason = seasons.find(s => s.active);
+
+  const currentItem = groups.flatMap(g => g.items).find(item =>
+    location === item.href || (item.href !== '/' && location.startsWith(item.href))
+  );
+  const crumb = currentItem?.label ?? 'Início';
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <aside className="w-60 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border shrink-0 fixed inset-y-0 left-0">
+      <aside className="w-[268px] bg-sidebar text-sidebar-foreground flex flex-col shrink-0 fixed inset-y-0 left-0">
         {/* Logo / brand */}
-        <div className="p-5 border-b border-sidebar-border/50 flex items-center gap-3">
-          <img src="/logo-sdn.png" alt="SDN" className="w-8 h-8 object-contain opacity-90" />
-          <div>
-            <p className="text-sm font-bold leading-none">SDN</p>
-            <p className="text-[10px] text-sidebar-foreground/50 mt-0.5 uppercase tracking-wider">AAC</p>
+        <div className="px-5 py-[22px] pb-[18px] flex items-center gap-3 border-b border-white/8">
+          <div className="w-[42px] h-[42px] rounded-xl bg-white flex items-center justify-center shrink-0 p-1 shadow-lg">
+            <img src="/logo-sdn.png" alt="SDN" className="w-full h-full object-contain" />
+          </div>
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <p className="text-lg font-bold leading-none tracking-tight">SDN</p>
+            <p className="font-mono text-[9.5px] tracking-widest uppercase text-white/50 leading-tight">Desportos Náuticos · AAC</p>
           </div>
         </div>
 
         {/* Nav groups */}
-        <nav className="flex-1 py-2 overflow-y-auto">
+        <nav className="flex-1 py-5 px-3 overflow-y-auto flex flex-col gap-[26px]">
           {groups.map((group) => (
-            <div key={group.label} className="mb-0.5">
-              <p className="px-5 py-1 text-[9px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            <div key={group.label} className="flex flex-col gap-0.5">
+              <p className="font-mono text-[9.5px] font-semibold tracking-widest uppercase text-white/50 px-3 pb-2">
                 {group.label}
               </p>
-              <ul className="space-y-0.5 px-2">
-                {group.items.map((item) => {
-                  const isActive =
-                    location === item.href ||
-                    (item.href !== '/' && location.startsWith(item.href));
-                  const Icon = item.icon;
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          'flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors',
-                          isActive
-                            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                            : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              {group.items.map((item) => {
+                const isActive =
+                  location === item.href ||
+                  (item.href !== '/' && location.startsWith(item.href));
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'relative flex items-center gap-[11px] px-3 py-[9px] rounded-lg text-[13.5px] font-medium transition-colors',
+                      isActive
+                        ? 'bg-brand-cyan/16 text-white'
+                        : 'text-white/62 hover:bg-white/6 hover:text-white'
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-[9px] bottom-[9px] w-[3px] rounded-r-[3px] bg-brand-cyan" />
+                    )}
+                    <Icon className="w-[15px] h-[15px] shrink-0" />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </nav>
 
         {/* User footer */}
-        <div className="p-3 border-t border-sidebar-border/50">
-          <div className="flex items-center gap-2.5 mb-3 px-2">
-            <div className="w-7 h-7 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold shrink-0">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold truncate">{user.name}</p>
-              <p className="text-[10px] text-sidebar-foreground/50 truncate capitalize">{user.role === 'admin' ? 'Administrador' : 'Treinador'}</p>
-            </div>
+        <div className="px-4 py-3.5 border-t border-white/8 flex items-center gap-[11px]">
+          <div className="w-[34px] h-[34px] rounded-[10px] bg-white/10 flex items-center justify-center font-mono text-xs font-semibold text-brand-cyan-light shrink-0">
+            {user.name.split(' ').map((p: string) => p.charAt(0)).slice(0, 2).join('').toUpperCase()}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full justify-start text-sidebar-foreground bg-sidebar-accent/20 border-sidebar-border/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground text-xs"
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] font-semibold truncate">{user.name}</p>
+            <p className="font-mono text-[9.5px] tracking-wide uppercase text-white/42 truncate">
+              {user.role === 'admin' ? 'Direção · Admin' : 'Treinador'}
+            </p>
+          </div>
+          <button
             onClick={() => logout()}
+            className="text-white/45 hover:text-white transition-colors shrink-0"
+            title="Terminar sessão"
           >
-            <LogOut className="w-3.5 h-3.5 mr-2" />
-            Terminar Sessão
-          </Button>
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-60 min-w-0 p-8">
-        <div className="max-w-7xl mx-auto">
-          {children}
-        </div>
-      </main>
+      <div className="flex-1 ml-[268px] min-w-0 flex flex-col">
+        <Header
+          crumb={crumb}
+          seasonLabel={activeSeason ? `Época ${activeSeason.name}` : null}
+          onSearchClick={() => setSearchOpen(true)}
+        />
+        <main className="flex-1 p-8">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
+      </div>
+
+      <SearchPalette open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

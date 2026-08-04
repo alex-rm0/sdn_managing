@@ -23,7 +23,10 @@ export interface Athlete {
   fprNumber?: string | null;
   /** @nullable */
   category?: string | null;
-  affiliationDate: Date;
+  /** @nullable */
+  affiliationDate?: Date | null;
+  recreational: boolean;
+  competesAsSenior: boolean;
   status: AthleteStatus;
   /** @nullable */
   notes?: string | null;

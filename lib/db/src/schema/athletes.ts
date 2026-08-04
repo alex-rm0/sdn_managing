@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { seasonsTable } from "./seasons";
@@ -12,7 +12,9 @@ export const athletesTable = pgTable("athletes", {
   phone: text("phone"),
   memberNumber: text("member_number"),
   fprNumber: text("fpr_number"),
-  affiliationDate: date("affiliation_date", { mode: "string" }).notNull(),
+  affiliationDate: date("affiliation_date", { mode: "string" }),
+  recreational: boolean("recreational").notNull().default(false),
+  competesAsSenior: boolean("competes_as_senior").notNull().default(false),
   status: text("status", { enum: ["ativo", "inativo", "suspenso"] }).notNull().default("ativo"),
   notes: text("notes"),
 });

@@ -10,7 +10,7 @@ import type { AuthUserRole } from './authUserRole';
 export interface AuthUser {
   id: number;
   name: string;
-  email: string;
+  username: string;
   role: AuthUserRole;
   active: boolean;
   assignedCategories?: string[];

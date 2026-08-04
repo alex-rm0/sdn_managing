@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
-  email: z.string().min(1, 'Utilizador obrigatório'),
+  username: z.string().min(1, 'Utilizador obrigatório'),
   password: z.string().min(1, 'A palavra-passe é obrigatória'),
 });
 
@@ -27,7 +27,7 @@ export default function Login() {
     formState: { errors },
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { username: '', password: '' },
   });
 
   const { mutate: login, isPending } = useLogin({
@@ -98,23 +98,23 @@ export default function Login() {
         >
           {/* Fields row */}
           <div className="flex flex-col sm:flex-row gap-4 items-start">
-            {/* Email / utilizador */}
+            {/* Utilizador */}
             <div className="flex-1 flex flex-col gap-1.5">
               <label
                 className="text-xs font-semibold tracking-widest uppercase"
                 style={{ color: '#6B7280' }}
               >
-                Email
+                Utilizador
               </label>
               <input
-                {...register('email')}
+                {...register('username')}
                 autoComplete="username"
-                placeholder="nome@sdn.aac.pt"
+                placeholder="nome de utilizador"
                 className="w-full h-11 rounded-lg border border-gray-200 bg-white px-4 text-sm shadow-sm outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20"
                 style={{ color: '#111827' }}
               />
-              {errors.email && (
-                <p className="text-xs text-red-500">{errors.email.message}</p>
+              {errors.username && (
+                <p className="text-xs text-red-500">{errors.username.message}</p>
               )}
             </div>
 

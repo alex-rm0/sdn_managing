@@ -20,7 +20,10 @@ export interface AthleteUpdate {
   memberNumber?: string | null;
   /** @nullable */
   fprNumber?: string | null;
-  affiliationDate?: Date;
+  /** @nullable */
+  affiliationDate?: Date | null;
+  recreational?: boolean;
+  competesAsSenior?: boolean;
   status?: AthleteUpdateStatus;
   /** @nullable */
   notes?: string | null;

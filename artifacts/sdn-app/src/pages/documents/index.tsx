@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useListDocuments, useCreateDocument, useUpdateDocument, useDeleteDocument, getListDocumentsQueryKey } from '@workspace/api-client-react';
 import type { Document } from '@workspace/api-client-react';
@@ -16,7 +16,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, FileText, Download, Upload, Loader2, X } from 'lucide-react';
+import { Plus, FileText, Download, Upload, Loader2, X, Search } from 'lucide-react';
 
 const schema = z.object({
   title: z.string().min(1, 'Título obrigatório'),
@@ -29,10 +29,9 @@ const schema = z.object({
   contractStart: z.string().nullable().optional(),
   contractEnd: z.string().nullable().optional(),
   contractStatus: z.enum(['ativo', 'expirado']).nullable().optional(),
-  notes: z.string().nullable().optional(),
 });
 
-const defaultValues = { title: '', type: 'arquivo' as const, date: new Date().toISOString().split('T')[0], category: '', entity: '', content: '', fileUrl: '', contractStart: '', contractEnd: '', contractStatus: null as 'ativo' | 'expirado' | null, notes: '' };
+const defaultValues = { title: '', type: 'arquivo' as const, date: new Date().toISOString().split('T')[0], category: '', entity: '', content: '', fileUrl: '', contractStart: '', contractEnd: '', contractStatus: null as 'ativo' | 'expirado' | null };
 
 export default function DocumentsList() {
   const { toast } = useToast();
@@ -41,16 +40,22 @@ export default function DocumentsList() {
   const [editing, setEditing] = useState<Document | null>(null);
   const [activeTab, setActiveTab] = useState('arquivo');
   const [isUploading, setIsUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const filePickerRef = useRef<HTMLInputElement>(null);
 
   const { data: documents, isLoading } = useListDocuments();
+  const categoryOptions = useMemo(() =>
+    Array.from(new Set((documents ?? []).map(d => d.category).filter((c): c is string => !!c))).sort(),
+    [documents]
+  );
   const form = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), defaultValues });
   const watchType = form.watch('type');
 
   useEffect(() => {
     if (open) {
       if (editing) {
-        form.reset({ ...editing, category: editing.category ?? '', entity: editing.entity ?? '', content: editing.content ?? '', fileUrl: editing.fileUrl ?? '', contractStart: editing.contractStart ?? '', contractEnd: editing.contractEnd ?? '', contractStatus: editing.contractStatus ?? null, notes: editing.notes ?? '' });
+        form.reset({ ...editing, category: editing.category ?? '', entity: editing.entity ?? '', content: editing.content ?? '', fileUrl: editing.fileUrl ?? '', contractStart: editing.contractStart ?? '', contractEnd: editing.contractEnd ?? '', contractStatus: editing.contractStatus ?? null });
       } else {
         form.reset({ ...defaultValues, type: activeTab as any });
       }
@@ -71,7 +76,7 @@ export default function DocumentsList() {
   }});
 
   const onSubmit = (values: z.infer<typeof schema>) => {
-    const data = { ...values, category: values.category || null, entity: values.entity || null, content: values.content || null, fileUrl: values.fileUrl || null, contractStart: values.contractStart || null, contractEnd: values.contractEnd || null, contractStatus: values.contractStatus ?? null, notes: values.notes || null };
+    const data = { ...values, category: values.category || null, entity: values.entity || null, content: values.content || null, fileUrl: values.fileUrl || null, contractStart: values.contractStart || null, contractEnd: values.contractEnd || null, contractStatus: values.contractStatus ?? null };
     if (editing) updateMutation.mutate({ id: editing.id, data });
     else createMutation.mutate({ data });
   };
@@ -99,10 +104,16 @@ export default function DocumentsList() {
   };
 
   const renderTable = (type: string) => {
-    const filtered = documents?.filter(d => d.type === type) || [];
+    const q = searchTerm.toLowerCase().trim();
+    const filtered = (documents ?? []).filter(d => {
+      if (d.type !== type) return false;
+      const matchesSearch = !q || d.title.toLowerCase().includes(q) || (d.category?.toLowerCase().includes(q)) || (d.entity?.toLowerCase().includes(q));
+      const matchesCategory = categoryFilter === 'all' || d.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
     const isContract = type === 'contrato';
     return (
-      <div className="bg-card rounded-md border shadow-sm">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -151,9 +162,23 @@ export default function DocumentsList() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Documentos</h1>
+        <div className="flex justify-end items-center">
           <Button size="sm" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Novo Documento</Button>
+        </div>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="relative w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input placeholder="Procurar por título, categoria ou entidade..." className="pl-9 h-[34px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px] h-[34px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categoryOptions.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
@@ -239,7 +264,6 @@ export default function DocumentsList() {
                 </FormItem>
               )} />
               <FormField control={form.control} name="content" render={({ field }) => (<FormItem><FormLabel>Conteúdo / Descrição</FormLabel><FormControl><Textarea rows={3} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notas</FormLabel><FormControl><Textarea rows={2} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={isPending}>{isPending ? 'A guardar...' : editing ? 'Guardar' : 'Criar'}</Button>

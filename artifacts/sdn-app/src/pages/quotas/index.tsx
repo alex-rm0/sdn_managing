@@ -318,8 +318,7 @@ export default function QuotasList() {
       <div className="space-y-5">
 
         {/* ── Top bar: title + epoch + view toggle ── */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h1 className="text-3xl font-bold tracking-tight">Quotas</h1>
+        <div className="flex items-center justify-end gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
             <SearchableSelect options={seasonOptions} value={seasonId}
               onChange={v => setSeasonId(v)} placeholder="Selecionar época" className="w-[180px]" />

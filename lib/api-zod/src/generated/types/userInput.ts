@@ -9,7 +9,7 @@ import type { UserInputRole } from './userInputRole';
 
 export interface UserInput {
   name: string;
-  email: string;
+  username: string;
   password: string;
   role: UserInputRole;
   assignedCategories?: string[];
